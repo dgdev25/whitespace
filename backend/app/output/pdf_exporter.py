@@ -61,20 +61,20 @@ def _render_html(payload: dict) -> str:
         content.append("</div>")
 
     content.append("<div class='section'><h2>Gap Map</h2>")
-    if gaps.get("gaps"):
-        content.append("<strong>Gaps</strong><ul>")
-        for gap in gaps["gaps"]:
+    if gaps.get("engineering_gaps"):
+        content.append("<strong>Engineering Gaps</strong><ul>")
+        for gap in gaps["engineering_gaps"]:
             content.append(f"<li>{e(str(gap))}</li>")
         content.append("</ul>")
-    if gaps.get("contradictions"):
-        content.append("<strong>Contradictions</strong><ul>")
-        for contradiction in gaps["contradictions"]:
-            content.append(f"<li>{e(str(contradiction))}</li>")
+    if gaps.get("ready_to_productize"):
+        content.append("<strong>Ready to Productize</strong><ul>")
+        for item in gaps["ready_to_productize"]:
+            content.append(f"<li>{e(str(item))}</li>")
         content.append("</ul>")
-    if gaps.get("recurring_themes"):
-        content.append("<strong>Recurring Themes</strong><ul>")
-        for theme in gaps["recurring_themes"]:
-            content.append(f"<li>{e(str(theme))}</li>")
+    if gaps.get("recurring_pain_points"):
+        content.append("<strong>Recurring Pain Points</strong><ul>")
+        for point in gaps["recurring_pain_points"]:
+            content.append(f"<li>{e(str(point))}</li>")
         content.append("</ul>")
     content.append("</div>")
 

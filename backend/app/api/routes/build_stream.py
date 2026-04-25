@@ -15,7 +15,7 @@ router = APIRouter(prefix="/build", tags=["build"])
 @router.get("/{idea_id}/stream")
 async def stream_build(idea_id: str, session: AsyncSession = Depends(get_session)):
     async def generator():
-        for _ in range(60):
+        for _ in range(180):
             result = await session.execute(
                 select(BuildOutput).where(BuildOutput.idea_id == idea_id)
             )

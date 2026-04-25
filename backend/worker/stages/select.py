@@ -1,7 +1,6 @@
 from datetime import date
 from sqlalchemy.orm import Session
 from app.db.models.idea import Idea
-from app.db.models.ingestion_run import IngestionRun
 
 
 def _badge(novelty: float, feasibility: float) -> str:
@@ -17,7 +16,6 @@ def _badge(novelty: float, feasibility: float) -> str:
 def select_and_persist(
     session: Session,
     ideas: list[dict],
-    papers_fetched: int,
     n: int,
 ) -> list[Idea]:
     today = date.today().isoformat()
@@ -48,12 +46,6 @@ def select_and_persist(
         )
         session.add(record)
         idea_records.append(record)
-    run = IngestionRun(
-        run_date=today,
-        papers_fetched=papers_fetched,
-        ideas_generated=len(idea_records),
-    )
-    session.add(run)
     session.commit()
     for r in idea_records:
         session.refresh(r)

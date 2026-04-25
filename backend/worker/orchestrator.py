@@ -92,7 +92,7 @@ def run_daily_pipeline(session: Session) -> None:
 
         # 5. Select top N, persist
         idea_records = select_and_persist(
-            session, ideas_scored, len(paper_records), n=settings.ideas_per_run
+            session, ideas_scored, n=settings.ideas_per_run
         )
 
         # 6. Compute connections
