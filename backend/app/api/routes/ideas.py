@@ -1,7 +1,8 @@
 from datetime import date
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import func as sqlfunc, select
+from sqlalchemy import func as sqlfunc
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_session
