@@ -1,5 +1,3 @@
-import html
-import io
 import re
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -97,12 +95,13 @@ async def export_md(
     if not idea:
         raise HTTPException(status_code=404, detail="Idea not found")
 
-    safe_id = "".join(c for c in idea_id if c.isalnum() or c == "-")
+    safe_title = "".join(c if c.isalnum() or c in " -" else "" for c in idea.title).strip()
+    safe_title = "-".join(safe_title.split())[:80] or "build-plan"
     content = _build_markdown(idea, build)
     return Response(
         content=content,
         media_type="text/markdown",
-        headers={"Content-Disposition": f'attachment; filename="{safe_id}.md"'},
+        headers={"Content-Disposition": f'attachment; filename="{safe_title}.md"'},
     )
 
 
@@ -124,59 +123,99 @@ async def export_pdf_route(
     if not idea:
         raise HTTPException(status_code=404, detail="Idea not found")
 
-    try:
-        from weasyprint import HTML  # noqa: PLC0415
-    except (ImportError, OSError) as exc:
-        raise HTTPException(status_code=501, detail="PDF export not yet available") from exc
+    from fpdf import FPDF  # noqa: PLC0415
+
+    _UNICODE_MAP = {
+        "—": "--", "–": "-", "‘": "'", "’": "'",
+        "“": '"', "”": '"', "…": "...", "•": "*",
+        "·": "*", "‒": "-", "‑": "-", "‐": "-",
+    }
+
+    def _safe(text: str) -> str:
+        for ch, rep in _UNICODE_MAP.items():
+            text = text.replace(ch, rep)
+        return text.encode("latin-1", errors="replace").decode("latin-1")
 
     sketch = build.product_sketch or {}
     risks = sketch.get("risks", [])
     monetisation = sketch.get("monetisation", [])
 
-    e = html.escape
-    risks_html = "".join(
-        f"<li><strong>{e(r.get('title', ''))}</strong>: {e(r.get('description', ''))}</li>"
-        for r in risks
-    )
-    monetisation_html = "".join(
-        f"<li><strong>{e(m.get('name', ''))}</strong> ({e(m.get('fit', ''))}):"
-        f" {e(m.get('description', ''))}</li>"
-        for m in monetisation
-    )
+    pdf = FPDF()
+    pdf.set_auto_page_break(auto=True, margin=20)
+    pdf.add_page()
+    pdf.set_left_margin(20)
+    pdf.set_right_margin(20)
 
-    html_content = f"""<!DOCTYPE html>
-<html>
-<head><meta charset="utf-8"><style>
-  body {{ font-family: sans-serif; max-width: 800px; margin: 40px auto; color: #222; }}
-  h1, h2, h3 {{ color: #111; }}
-  hr {{ border: 1px solid #ddd; }}
-</style></head>
-<body>
-  <h1>{e(idea.title)}</h1>
-  <p>{e(idea.description)}</p>
-  <h2>Why Novel</h2><p>{e(idea.why_novel)}</p>
-  <h2>Who Builds This</h2><p>{e(idea.who_builds)}</p>
-  <h2>Who Buys This</h2><p>{e(idea.who_buys)}</p>
-  <hr/>
-  <h2>Product Sketch</h2>
-  <h3>Value Proposition</h3>
-  <p><strong>{e(sketch.get('value_prop_headline', ''))}</strong></p>
-  <p>{e(sketch.get('value_prop_body', ''))}</p>
-  <h3>Buyer Profile</h3><p>{e(sketch.get('buyer_profile', ''))}</p>
-  <h3>Risks</h3><ul>{risks_html}</ul>
-  <h3>Monetisation</h3><ul>{monetisation_html}</ul>
-  <hr/>
-  <h2>Technical Plan</h2><pre>{e(build.technical_plan)}</pre>
-</body>
-</html>"""
+    def _write(font: str, style: str, size: int, color: tuple, text: str, line_h: float, pad: float) -> None:
+        pdf.set_font(font, style, size)
+        pdf.set_text_color(*color)
+        pdf.set_x(pdf.l_margin)
+        pdf.multi_cell(pdf.epw, line_h, _safe(text or ""))
+        pdf.set_x(pdf.l_margin)
+        if pad:
+            pdf.ln(pad)
 
-    safe_id = "".join(c for c in idea_id if c.isalnum() or c == "-")
-    buffer = io.BytesIO()
-    HTML(string=html_content).write_pdf(buffer)
-    pdf_bytes = buffer.getvalue()
+    def heading(text: str, size: int = 16) -> None:
+        _write("Helvetica", "B", size, (17, 17, 17), text, 8, 2)
+
+    def subheading(text: str) -> None:
+        _write("Helvetica", "B", 11, (60, 60, 60), text, 7, 1)
+
+    def body(text: str) -> None:
+        _write("Helvetica", "", 10, (50, 50, 50), text, 6, 3)
+
+    def rule() -> None:
+        pdf.set_draw_color(220, 220, 220)
+        pdf.line(20, pdf.get_y(), 190, pdf.get_y())
+        pdf.ln(5)
+
+    heading(idea.title, 18)
+    body(idea.description or "")
+    rule()
+
+    subheading("Why Novel")
+    body(idea.why_novel or "")
+
+    subheading("Who Builds This")
+    body(idea.who_builds or "")
+
+    subheading("Who Buys This")
+    body(idea.who_buys or "")
+    rule()
+
+    heading("Product Sketch", 14)
+
+    if sketch.get("value_prop_headline"):
+        subheading("Value Proposition")
+        _write("Helvetica", "B", 10, (30, 30, 30), sketch["value_prop_headline"], 6, 1)
+        body(sketch.get("value_prop_body", ""))
+
+    if sketch.get("buyer_profile"):
+        subheading("Buyer Profile")
+        body(sketch["buyer_profile"])
+
+    if risks:
+        subheading("Risks")
+        for r in risks:
+            _write("Helvetica", "B", 10, (30, 30, 30), f"• {r.get('title', '')}", 6, 0)
+            _write("Helvetica", "", 10, (70, 70, 70), f"  {r.get('description', '')}", 6, 1)
+
+    if monetisation:
+        subheading("Monetisation")
+        for m in monetisation:
+            _write("Helvetica", "B", 10, (30, 30, 30), f"• {m.get('name', '')} ({m.get('fit', '')})", 6, 0)
+            _write("Helvetica", "", 10, (70, 70, 70), f"  {m.get('description', '')}", 6, 1)
+
+    rule()
+    heading("Technical Plan", 14)
+    _write("Courier", "", 9, (40, 40, 40), build.technical_plan or "", 5, 0)
+
+    safe_title = "".join(c if c.isalnum() or c in " -" else "" for c in idea.title).strip()
+    safe_title = "-".join(safe_title.split())[:80] or "build-plan"
+    pdf_bytes = pdf.output()
 
     return Response(
-        content=pdf_bytes,
+        content=bytes(pdf_bytes),
         media_type="application/pdf",
-        headers={"Content-Disposition": f'attachment; filename="{safe_id}.pdf"'},
+        headers={"Content-Disposition": f'attachment; filename="{safe_title}.pdf"'},
     )

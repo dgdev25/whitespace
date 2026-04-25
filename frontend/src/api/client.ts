@@ -1,5 +1,5 @@
 import axios from "axios";
-import type { TodayFeed, IdeaDetail, IdeaSummary, SavedIdea, BuildOutput } from "./types";
+import type { TodayFeed, IdeaDetail, IdeaSummary, SavedIdea, BuildOutput, RunnersResponse, SystemConfig, PipelineRunResponse, HistoryGroup } from "./types";
 
 const http = axios.create({ baseURL: "/api" });
 
@@ -13,4 +13,13 @@ export const api = {
   unsaveIdea: (id: string): Promise<void> => http.delete(`/saved/${id}`).then(() => undefined),
   getBuild: (id: string): Promise<BuildOutput> => http.get(`/build/${id}`).then(r => r.data),
   triggerBuild: (id: string): Promise<BuildOutput> => http.post(`/build/${id}`).then(r => r.data),
+  getRunners: (): Promise<RunnersResponse> => http.get("/system/runners").then(r => r.data),
+  setRunner: (name: string | null): Promise<RunnersResponse> => http.put("/system/runner", { name }).then(r => r.data),
+  getConfig: (): Promise<SystemConfig> => http.get("/system/config").then(r => r.data),
+  setDataSources: (orgs: string[], categories: string[]): Promise<SystemConfig> =>
+    http.put("/system/data-sources", { orgs, categories }).then(r => r.data),
+  triggerPipeline: (): Promise<PipelineRunResponse> => http.post("/system/pipeline/run").then(r => r.data),
+  getPipelineStatus: (): Promise<{ running: boolean; last_completed_run_id: string | null; last_completed_at: string | null }> =>
+    http.get("/system/pipeline/status").then(r => r.data),
+  getHistory: (): Promise<HistoryGroup[]> => http.get("/ideas/history").then(r => r.data),
 };

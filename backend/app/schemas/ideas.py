@@ -36,3 +36,10 @@ class TodayFeed(BaseModel):
     date: str
     papers_ingested: int
     ideas: list[IdeaSummary]
+
+
+class HistoryGroup(BaseModel):
+    date: str
+    run_id: str | None
+    run_label: str
+    ideas: list[IdeaSummary]

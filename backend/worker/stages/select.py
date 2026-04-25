@@ -17,6 +17,7 @@ def select_and_persist(
     session: Session,
     ideas: list[dict],
     n: int,
+    run_id: str | None = None,
 ) -> list[Idea]:
     today = date.today().isoformat()
     ranked = sorted(
@@ -43,6 +44,7 @@ def select_and_persist(
             featured_date=today,
             is_featured=(i == 0),
             paper_ids=paper_ids,
+            run_id=run_id,
         )
         session.add(record)
         idea_records.append(record)

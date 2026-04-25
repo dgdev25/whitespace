@@ -22,7 +22,7 @@ dependencies = [
     "requests>=2.32",
     "huggingface_hub>=0.23",
     "feedparser>=6.0",
-    "weasyprint>=60",
+    "fpdf2>=2.7",
     "onnxruntime>=1.18",
     "sse-starlette>=2.1",
 ]

@@ -9,7 +9,7 @@ from app.api.deps import get_session
 from app.db.models.connected_idea import ConnectedIdea
 from app.db.models.idea import Idea
 from app.db.models.ingestion_run import IngestionRun
-from app.schemas.ideas import ConnectedIdeaOut, IdeaDetail, IdeaSummary, TodayFeed
+from app.schemas.ideas import ConnectedIdeaOut, HistoryGroup, IdeaDetail, IdeaSummary, TodayFeed
 
 router = APIRouter(prefix="/ideas", tags=["ideas"])
 
@@ -49,6 +49,63 @@ async def today_feed(
         papers_ingested=run_row.papers_fetched if run_row else 0,
         ideas=[IdeaSummary.model_validate(i, from_attributes=True) for i in ideas],
     )
+
+
+@router.get("/history", response_model=list[HistoryGroup])
+async def idea_history(session: AsyncSession = Depends(get_session)):
+    # Load runs newest-first so we can attach timestamps to ideas grouped by run
+    runs_result = await session.execute(
+        select(IngestionRun).order_by(IngestionRun.started_at.desc())
+    )
+    runs = {r.id: r for r in runs_result.scalars().all()}
+
+    ideas_result = await session.execute(
+        select(Idea)
+        .where(Idea.featured_date.isnot(None))
+        .order_by(Idea.run_id.desc(), Idea.novelty_score.desc())
+    )
+    ideas = ideas_result.scalars().all()
+
+    # Group by run_id, falling back to featured_date for pre-migration ideas
+    groups: dict[str, list] = {}
+    group_meta: dict[str, dict] = {}
+    for idea in ideas:
+        key = idea.run_id or f"date:{idea.featured_date}"
+        if key not in group_meta:
+            run = runs.get(idea.run_id) if idea.run_id else None
+            started = run.started_at if run else None
+            group_meta[key] = {
+                "run_id": idea.run_id,
+                "date": idea.featured_date or "unknown",
+                "started_at": started,
+            }
+        groups.setdefault(key, []).append(IdeaSummary.model_validate(idea, from_attributes=True))
+
+    # Sort groups by started_at desc (newest run first).
+    # Normalise to ISO string so datetime and date-string keys compare cleanly.
+    def _sort_key(k: str) -> str:
+        v = group_meta[k]["started_at"]
+        if v is None:
+            return group_meta[k]["date"]
+        return str(v)
+
+    ordered_keys = sorted(group_meta.keys(), key=_sort_key, reverse=True)
+
+    result = []
+    run_counts: dict[str, int] = {}
+    for key in ordered_keys:
+        meta = group_meta[key]
+        d = meta["date"]
+        run_counts[d] = run_counts.get(d, 0) + 1
+        count = run_counts[d]
+        label = f"Run #{count}" if count > 1 else ""
+        result.append(HistoryGroup(
+            date=d,
+            run_id=meta["run_id"],
+            run_label=label,
+            ideas=groups[key],
+        ))
+    return result
 
 
 @router.get("/surprise", response_model=IdeaSummary)

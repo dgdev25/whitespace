@@ -4,7 +4,7 @@
   --border: #e5e5e0;
   --text-primary: #111111;
   --text-secondary: #555555;
-  --text-muted: #aaaaaa;
+  --text-muted: #888888;
   --accent: #2563eb;
   --accent-hover: #1d4ed8;
   --badge-novel-bg: #dcfce7;
@@ -18,30 +18,30 @@
   --risk-bg: #fff7ed;
   --risk-border: #ea580c;
   --font-sans: "IBM Plex Sans", system-ui, sans-serif;
-  --radius: 8px;
-  --shadow-sm: 0 1px 3px rgba(0,0,0,0.05);
-  --shadow-md: 0 2px 8px rgba(0,0,0,0.08);
+  --radius: 12px;
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.04);
+  --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.06), 0 2px 4px -2px rgba(0,0,0,0.06);
 }
 
 [data-theme="dark"] {
   --bg: #0a0a0a;
   --surface: #111111;
-  --border: #1e1e1e;
+  --border: #222222;
   --text-primary: #f0f0f0;
   --text-secondary: #aaaaaa;
   --text-muted: #555555;
   --accent: #7c9ef0;
   --accent-hover: #93aef5;
-  --badge-novel-bg: #1a2a1a;
-  --badge-novel-text: #4caf50;
-  --badge-feasible-bg: #1a1a2a;
-  --badge-feasible-text: #7c9ef0;
-  --badge-speculative-bg: #2a2a1a;
-  --badge-speculative-text: #d4af37;
-  --badge-emerging-bg: #2a1a1a;
-  --badge-emerging-text: #f97316;
+  --badge-novel-bg: #14251a;
+  --badge-novel-text: #4ade80;
+  --badge-feasible-bg: #1c253f;
+  --badge-feasible-text: #818cf8;
+  --badge-speculative-bg: #2a2618;
+  --badge-speculative-text: #facc15;
+  --badge-emerging-bg: #2a1b15;
+  --badge-emerging-text: #fb923c;
   --risk-bg: #1a1010;
   --risk-border: #f97316;
-  --shadow-sm: 0 1px 3px rgba(0,0,0,0.3);
-  --shadow-md: 0 2px 8px rgba(0,0,0,0.4);
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.2);
+  --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.3), 0 2px 4px -2px rgba(0,0,0,0.3);
 }

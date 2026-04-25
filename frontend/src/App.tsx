@@ -5,6 +5,7 @@ import { IdeaDetailPage } from "./pages/IdeaDetailPage";
 import { BuildOutputPage } from "./pages/BuildOutputPage";
 import { SavedPage } from "./pages/SavedPage";
 import { SettingsPage } from "./pages/SettingsPage";
+import { HistoryPage } from "./pages/HistoryPage";
 
 export default function App() {
   return (
@@ -15,6 +16,7 @@ export default function App() {
         <Route path="/ideas/:id" element={<IdeaDetailPage />} />
         <Route path="/ideas/:id/build" element={<BuildOutputPage />} />
         <Route path="/saved" element={<SavedPage />} />
+        <Route path="/history" element={<HistoryPage />} />
         <Route path="/settings" element={<SettingsPage />} />
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>

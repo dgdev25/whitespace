@@ -4,6 +4,7 @@ import { useIdea } from "../hooks/useIdeas";
 import { useSaveIdea, useUnsaveIdea, useSaved } from "../hooks/useSaved";
 import { BadgeRow } from "../components/BadgeRow";
 import { ConnectedIdeas } from "../components/ConnectedIdeas";
+import { ScoreBar } from "../components/ScoreBar";
 
 export function IdeaDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -13,76 +14,112 @@ export function IdeaDetailPage() {
   const saveIdea = useSaveIdea();
   const unsaveIdea = useUnsaveIdea();
 
-  if (isLoading) return <p style={{ padding: 20, color: "var(--text-muted)" }}>Loading...</p>;
-  if (isError) return <p style={{ padding: 20, color: "var(--badge-emerging-text)" }}>Failed to load idea.</p>;
-  if (!idea) return <p style={{ padding: 20 }}>Idea not found.</p>;
+  if (isLoading) return <p style={{ padding: "40px 24px", color: "var(--text-muted)" }}>Loading...</p>;
+  if (isError || !idea) return <p style={{ padding: "40px 24px", color: "var(--badge-emerging-text)" }}>Failed to load idea.</p>;
 
   const isSaved = saved?.some(s => s.idea.id === id);
 
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "1fr 220px", minHeight: "calc(100vh - 44px)" }}>
-      <div style={{ padding: 20, borderRight: "1px solid var(--border)", overflow: "auto" }}>
-        <div style={{ marginBottom: 8 }}>
-          <button onClick={() => navigate(-1)} style={{ background: "none", border: "none", color: "var(--text-muted)", fontSize: 10, padding: 0 }}>
-            ← Back
+    <div style={{ maxWidth: 900, margin: "0 auto", padding: "0 24px" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 280px", gap: 48, alignItems: "start", padding: "48px 0 80px" }}>
+        {/* Main content */}
+        <div>
+          <button onClick={() => navigate(-1)} style={{ background: "none", border: "none", fontSize: 14, fontWeight: 500, color: "var(--text-secondary)", padding: 0, marginBottom: 24, cursor: "pointer" }}>
+            ← Back to Ideas
           </button>
-        </div>
-        <div style={{ marginBottom: 10 }}><BadgeRow badges={[idea.badge]} /></div>
-        <h1 style={{ fontSize: 16, fontWeight: 800, color: "var(--text-primary)", lineHeight: 1.3, marginBottom: 10 }}>{idea.title}</h1>
-        <p style={{ fontSize: 10, color: "var(--text-secondary)", lineHeight: 1.7, marginBottom: 16 }}>{idea.description}</p>
+          <div style={{ marginBottom: 12 }}><BadgeRow badges={[idea.badge]} /></div>
+          <h1 style={{ fontSize: 28, fontWeight: 700, color: "var(--text-primary)", margin: "12px 0 14px", lineHeight: 1.3 }}>
+            {idea.title}
+          </h1>
+          <p style={{ fontSize: 16, color: "var(--text-secondary)", lineHeight: 1.75, marginBottom: 36 }}>
+            {idea.description}
+          </p>
 
-        <Section label="WHY THIS IS NOVEL" color="var(--accent)">
-          <p style={{ fontSize: 10, color: "var(--text-secondary)", lineHeight: 1.6 }}>{idea.why_novel}</p>
-        </Section>
+          <Section label="Why It's Novel">
+            <p style={{ fontSize: 15, color: "var(--text-secondary)", lineHeight: 1.75 }}>{idea.why_novel}</p>
+          </Section>
 
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 16 }}>
-          <InfoBox label="WHO BUILDS THIS" value={idea.who_builds} />
-          <InfoBox label="WHO BUYS IT" value={idea.who_buys} />
-        </div>
-
-        <Section label={`RESEARCH BASIS — ${idea.paper_ids.length} PAPERS`} color="var(--text-muted)">
-          {idea.paper_ids.map(pid => (
-            <div key={pid} style={{ background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 4, padding: 8, marginBottom: 6, fontSize: 9, color: "var(--text-secondary)" }}>
-              {pid}
+          <Section label="Analysis">
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+              <InfoBox label="Who Builds This" value={idea.who_builds} />
+              <InfoBox label="Who Buys This" value={idea.who_buys} />
             </div>
-          ))}
-        </Section>
+          </Section>
 
-        <div style={{ display: "flex", gap: 10, marginTop: 20 }}>
-          <button onClick={() => isSaved ? unsaveIdea.mutate(id!) : saveIdea.mutate(id!)} style={{
-            background: "var(--bg)", border: "1px solid var(--border)", color: "var(--text-secondary)",
-            fontSize: 9, padding: "6px 14px", borderRadius: 4,
-          }}>
-            {isSaved ? "Saved ✓" : "Save"}
-          </button>
-          <button onClick={() => navigate(`/ideas/${id}/build`)} style={{
-            background: "var(--text-primary)", border: "none", color: "var(--bg)",
-            fontSize: 9, padding: "6px 14px", borderRadius: 4, fontWeight: 600,
-          }}>
-            Build Plan →
-          </button>
+          <Section label={`Research Basis — ${idea.paper_ids.length} Paper${idea.paper_ids.length !== 1 ? "s" : ""}`}>
+            {idea.paper_ids.map(pid => (
+              <a
+                key={pid}
+                href={`https://arxiv.org/abs/${pid}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  display: "flex", alignItems: "flex-start", gap: 14,
+                  background: "var(--surface)", border: "1px solid var(--border)",
+                  borderRadius: 8, padding: "12px 16px", marginBottom: 8,
+                  fontSize: 14, color: "var(--text-secondary)",
+                  textDecoration: "none",
+                }}
+                onMouseEnter={e => (e.currentTarget.style.borderColor = "var(--accent)")}
+                onMouseLeave={e => (e.currentTarget.style.borderColor = "var(--border)")}
+              >
+                <span style={{ color: "var(--accent)", flexShrink: 0 }}>↗</span>
+                <span>{pid}</span>
+              </a>
+            ))}
+          </Section>
         </div>
-      </div>
 
-      <div style={{ padding: 16, background: "var(--bg)", overflow: "auto" }}>
-        <ConnectedIdeas ideas={idea.connections} />
-        <div style={{ marginTop: 20, borderTop: "1px solid var(--border)", paddingTop: 16 }}>
-          <button onClick={() => navigate("/ideas/surprise")} style={{
-            width: "100%", background: "var(--surface)", border: "1px solid var(--border)",
-            color: "var(--text-muted)", fontSize: 9, padding: 8, borderRadius: 4,
-          }}>
+        {/* Sidebar */}
+        <aside style={{ position: "sticky", top: 80 }}>
+          <SidebarCard title="Scores">
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              <ScoreBar label="Novelty" value={idea.novelty_score} type="novelty" />
+              <ScoreBar label="Feasibility" value={idea.feasibility_score} type="feasibility" />
+            </div>
+          </SidebarCard>
+
+          <SidebarCard title="Actions">
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <button
+                onClick={() => isSaved ? unsaveIdea.mutate(id!) : saveIdea.mutate(id!)}
+                style={{ width: "100%", background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)", borderRadius: 8, fontSize: 14, fontWeight: 500, padding: "8px 16px" }}
+              >
+                {isSaved ? "Saved ✓" : "Save Idea"}
+              </button>
+              <button
+                onClick={() => navigate(`/ideas/${id}/build`)}
+                style={{ width: "100%", background: "var(--accent)", border: "none", color: "white", borderRadius: 8, fontSize: 14, fontWeight: 600, padding: "8px 16px" }}
+              >
+                Build Plan →
+              </button>
+            </div>
+          </SidebarCard>
+
+          {idea.connections.length > 0 && (
+            <SidebarCard title="Connected Ideas">
+              <ConnectedIdeas ideas={idea.connections} />
+            </SidebarCard>
+          )}
+
+          <button
+            onClick={() => navigate("/ideas/surprise")}
+            style={{ width: "100%", marginTop: 4, background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-muted)", borderRadius: 8, fontSize: 14, fontWeight: 500, padding: "8px 16px" }}
+          >
             ↻ Surprise me
           </button>
-        </div>
+        </aside>
       </div>
     </div>
   );
 }
 
-function Section({ label, color, children }: { label: string; color: string; children: ReactNode }) {
+function Section({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <div style={{ marginBottom: 16 }}>
-      <p style={{ fontSize: 9, color, letterSpacing: 1, fontWeight: 700, marginBottom: 6 }}>{label}</p>
+    <div style={{ marginBottom: 36 }}>
+      <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: 0.8, textTransform: "uppercase", color: "var(--text-muted)", marginBottom: 12, paddingBottom: 10, borderBottom: "1px solid var(--border)" }}>
+        {label}
+      </p>
       {children}
     </div>
   );
@@ -90,9 +127,18 @@ function Section({ label, color, children }: { label: string; color: string; chi
 
 function InfoBox({ label, value }: { label: string; value: string }) {
   return (
-    <div style={{ background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 4, padding: 10 }}>
-      <p style={{ fontSize: 8, color: "var(--text-muted)", marginBottom: 4 }}>{label}</p>
-      <p style={{ fontSize: 9, color: "var(--text-secondary)", lineHeight: 1.5 }}>{value}</p>
+    <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 12, padding: 20 }}>
+      <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: 0.8, textTransform: "uppercase", color: "var(--text-muted)", marginBottom: 10 }}>{label}</p>
+      <p style={{ fontSize: 14, color: "var(--text-secondary)", lineHeight: 1.7 }}>{value}</p>
+    </div>
+  );
+}
+
+function SidebarCard({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 12, padding: 20, marginBottom: 16 }}>
+      <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: 0.8, textTransform: "uppercase", color: "var(--text-muted)", marginBottom: 16 }}>{title}</p>
+      {children}
     </div>
   );
 }

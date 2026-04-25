@@ -61,3 +61,37 @@ export interface BuildOutput {
   status: "pending" | "generating" | "ready" | "failed";
   created_at: string;
 }
+
+export interface RunnerStatus {
+  name: string;
+  label: string;
+  available: boolean;
+  method: "cli" | "api";
+}
+
+export interface RunnersResponse {
+  runners: RunnerStatus[];
+  active: string | null;
+}
+
+export interface SystemConfig {
+  schedule_hour: number;
+  schedule_minute: number;
+  ideas_per_run: number;
+  arxiv_orgs: string[];
+  arxiv_categories: string[];
+  active_orgs: string[];
+  active_categories: string[];
+}
+
+export interface PipelineRunResponse {
+  status: "started" | "already_running";
+  message: string;
+}
+
+export interface HistoryGroup {
+  date: string;
+  run_id: string | null;
+  run_label: string;
+  ideas: IdeaSummary[];
+}
