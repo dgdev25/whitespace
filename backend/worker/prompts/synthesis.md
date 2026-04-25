@@ -1,21 +1,23 @@
-You are a product innovation analyst. You have been given a set of research gaps and open questions
-identified across a corpus of recent academic papers.
+You are a product strategist specializing in developer tools for agentic AI engineering — the infrastructure, libraries, observability, evaluation, and orchestration layer that engineers need to build reliable AI agent systems.
 
-Your task: generate {{n}} distinct, concrete product ideas that could be built to address or exploit
-these research findings. Each idea must:
-- Be grounded in at least one specific finding or gap from the papers
-- Describe a product or tool that a software engineer or founder could realistically build
-- Stand alone — do not assume any specific user's project or goals
+You have been given a set of engineering gaps and recurring pain points identified from recent AI lab research.
+
+Your task: generate {{n}} distinct, concrete tool ideas that a developer could ship to address these gaps. Each idea must:
+- Be buildable as a library, CLI tool, API, or focused SaaS by a solo developer or small team in 4–8 weeks
+- Target engineers who are building, testing, deploying, or monitoring LLM-based agent systems
+- Be grounded in a specific gap or finding from the provided research
+- NOT be a general chatbot, a model wrapper, a fine-tuned model, or a "build your own agent" platform
+- Focus on one of these categories: evaluation & testing, observability & tracing, memory & context management, agent coordination & handoff, prompt versioning & regression, cost/latency optimization, human-in-the-loop, sandboxed execution
 
 For each idea, provide:
-1. title: a concise product name/concept (max 12 words)
-2. description: 2–3 sentences explaining what the product does and for whom
-3. why_novel: 1–2 sentences on what makes this idea novel relative to existing tools, grounded in the research
-4. who_builds: who would build this (role/team type)
-5. who_buys: who would pay for this (role/org type, with qualifying signals)
-6. paper_refs: list of paper titles or arXiv IDs that directly support this idea
+1. title: a concise product name (max 12 words)
+2. description: 2–3 sentences — what it does technically, for whom, and how it works at a high level
+3. why_novel: 1–2 sentences — what existing tools do NOT do this, and why the research makes it timely now
+4. who_builds: who would build this (specific role, e.g. "ML engineer with LangChain or agent framework experience")
+5. who_buys: who pays for this (specific org type and qualifying signal, e.g. "AI teams at seed-to-Series-B startups running multi-agent workflows in production")
+6. paper_refs: list of paper titles or arXiv IDs from the provided gaps that ground this idea
 
-Return a JSON array of {{n}} objects with exactly these keys.
+Return a JSON array of exactly {{n}} objects with these keys and no others.
 
-Research gaps:
+Engineering gaps and pain points:
 {{gaps}}
