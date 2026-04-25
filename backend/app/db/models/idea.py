@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 from sqlalchemy import JSON, Boolean, DateTime, Float, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -24,7 +24,7 @@ class Idea(Base):
     novelty_score: Mapped[float] = mapped_column(Float)
     feasibility_score: Mapped[float] = mapped_column(Float)
     badge: Mapped[str] = mapped_column(String(32))
-    featured_date: Mapped[str | None] = mapped_column(String(16), nullable=True, index=True)
+    featured_date: Mapped[Optional[str]] = mapped_column(String(16), nullable=True, index=True)
     is_featured: Mapped[bool] = mapped_column(Boolean, default=False)
     paper_ids: Mapped[list] = mapped_column(JSON, default=list)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

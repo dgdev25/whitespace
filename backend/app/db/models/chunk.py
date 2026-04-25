@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import uuid
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 from sqlalchemy import ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -19,5 +19,5 @@ class Chunk(Base):
     text: Mapped[str] = mapped_column(Text)
     chunk_index: Mapped[int] = mapped_column(Integer)
     token_count: Mapped[int] = mapped_column(Integer)
-    embedding_id: Mapped[str | None] = mapped_column(String, nullable=True)
+    embedding_id: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     paper: Mapped[Paper] = relationship(back_populates="chunks")
