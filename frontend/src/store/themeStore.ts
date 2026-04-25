@@ -22,7 +22,11 @@ export const useThemeStore = create<ThemeStore>()(
   )
 );
 
-const stored = JSON.parse(localStorage.getItem("whitespace-theme") ?? "{}") as { state?: { theme?: Theme } };
-if (stored?.state?.theme) {
-  document.documentElement.setAttribute("data-theme", stored.state.theme);
+try {
+  const stored = JSON.parse(localStorage.getItem("whitespace-theme") ?? "{}") as { state?: { theme?: Theme } };
+  if (stored?.state?.theme) {
+    document.documentElement.setAttribute("data-theme", stored.state.theme);
+  }
+} catch {
+  // corrupted storage — leave default theme in place
 }
