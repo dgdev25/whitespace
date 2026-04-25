@@ -1,6 +1,21 @@
 # Whitespace
 
-Whitespace monitors AI research papers from arXiv and uses an LLM pipeline to surface novel, feasible startup ideas hiding in the gaps between papers. Every run produces a ranked set of ideas with novelty and feasibility scores, detailed breakdowns, and a "product sketch" you can generate on demand.
+Whitespace monitors AI research papers and uses an LLM pipeline to surface novel, feasible startup ideas hiding in the gaps between papers. Every run produces a ranked set of ideas with novelty and feasibility scores, detailed breakdowns, and a "product sketch" you can generate on demand.
+
+Papers are fetched from **arXiv**, which is where leading AI research organisations — Google DeepMind, Anthropic, OpenAI, Meta AI, Mistral, and others — publish the majority of their work. Whitespace searches arXiv using configurable organisation names as keywords (e.g. `all:DeepMind OR all:Anthropic`) combined with subject category filters (e.g. `cs.AI`, `cs.LG`). This means any paper on arXiv that mentions a configured organisation in its title, abstract, or author affiliations is eligible for ingestion.
+
+To pull in papers from a specific lab, add its name to `ARXIV_ORGS` in your `.env`. To focus on a particular research area, adjust `ARXIV_CATEGORIES`. Common examples:
+
+| Organisation | Add to `ARXIV_ORGS` |
+|---|---|
+| Google DeepMind | `DeepMind` |
+| Anthropic | `Anthropic` |
+| OpenAI | `OpenAI` |
+| Meta AI | `Meta AI` |
+| Mistral | `Mistral` |
+| Microsoft Research | `Microsoft Research` |
+| Stanford HAI | `Stanford` |
+| Berkeley AI Research | `Berkeley` |
 
 ---
 
