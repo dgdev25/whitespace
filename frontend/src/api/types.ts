@@ -84,6 +84,8 @@ export interface SystemConfig {
   schedule_hour: number;
   schedule_minute: number;
   ideas_per_run: number;
+  max_sources_per_run: number;
+  cached_analyses_count: number;
   arxiv_orgs: string[];
   arxiv_categories: string[];
   active_orgs: string[];

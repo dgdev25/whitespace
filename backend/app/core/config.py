@@ -14,5 +14,7 @@ class Settings(BaseSettings):
     arxiv_orgs: str = "DeepMind,Anthropic,OpenAI"
     arxiv_categories: str = "cs.AI,cs.LG,cs.CL,cs.MA,cs.SE,cs.HC,eess.SP"
     ideas_per_run: int = 8
+    max_sources_per_run: int = 20
+    cached_analyses_count: int = 30
 
 settings = Settings()

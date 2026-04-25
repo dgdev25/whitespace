@@ -25,6 +25,8 @@ class SystemConfigOut(BaseModel):
     schedule_hour: int
     schedule_minute: int
     ideas_per_run: int
+    max_sources_per_run: int
+    cached_analyses_count: int
     arxiv_orgs: list[str]        # full pool from .env
     arxiv_categories: list[str]  # full pool from .env
     active_orgs: list[str]       # user-selected subset
@@ -56,6 +58,11 @@ class ScheduleStatusOut(BaseModel):
     enabled: bool
     interval_minutes: int
     next_run_at: str | None
+
+
+class PipelineConfigIn(BaseModel):
+    max_sources_per_run: int
+    cached_analyses_count: int
 
 
 class RunnerPreferenceIn(BaseModel):

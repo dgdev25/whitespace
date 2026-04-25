@@ -21,9 +21,6 @@ from worker.stages.connect import compute_connections
 
 logger = logging.getLogger(__name__)
 
-MAX_NEW_PER_RUN = 20       # max new papers/posts to ingest per run
-CACHED_ANALYSES = 30       # cached analyses from prior runs to supplement new ones
-
 
 def _abstracts_to_pseudo_analyses(papers: list[dict]) -> list[dict]:
     return [
@@ -39,7 +36,14 @@ def _abstracts_to_pseudo_analyses(papers: list[dict]) -> list[dict]:
     ]
 
 
-def run_daily_pipeline(session: Session) -> None:
+def run_daily_pipeline(
+    session: Session,
+    max_sources: int | None = None,
+    cached_analyses: int | None = None,
+) -> None:
+    max_new = max_sources if max_sources is not None else settings.max_sources_per_run
+    cached_limit = cached_analyses if cached_analyses is not None else settings.cached_analyses_count
+
     today = date.today().isoformat()
     logger.info(f"Starting daily pipeline for {today}")
 
@@ -78,7 +82,7 @@ def run_daily_pipeline(session: Session) -> None:
         if raw_all:
             # 2. Persist all new records (capped per run)
             paper_records = []
-            for p in raw_all[:MAX_NEW_PER_RUN]:
+            for p in raw_all[:max_new]:
                 paper = Paper(
                     arxiv_id=p["arxiv_id"],
                     title=p["title"],
@@ -141,12 +145,12 @@ def run_daily_pipeline(session: Session) -> None:
                 .filter(Paper.analysis.isnot(None))
                 .filter(~Paper.arxiv_id.in_({p.arxiv_id for p, _ in paper_records}))
                 .order_by(Paper.created_at.desc())
-                .limit(CACHED_ANALYSES)
+                .limit(cached_limit)
                 .all()
             )
-            cached_analyses = [p.analysis for p in cached_papers if p.analysis]
-            analyses = new_analyses + cached_analyses
-            prog.emit("analyse", f"Analysed {len(new_analyses)} new + {len(cached_analyses)} cached", "done")
+            cached_analyses_list = [p.analysis for p in cached_papers if p.analysis]
+            analyses = new_analyses + cached_analyses_list
+            prog.emit("analyse", f"Analysed {len(new_analyses)} new + {len(cached_analyses_list)} cached", "done")
 
         else:
             prog.emit("fetch_arxiv", "No new content — re-synthesising from existing pool", "done")

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useRunners, useSystemConfig, useSetRunner, useSetDataSources, useSchedule, useSetSchedule } from "../hooks/useIdeas";
+import { useRunners, useSystemConfig, useSetRunner, useSetDataSources, useSchedule, useSetSchedule, useSetPipelineConfig } from "../hooks/useIdeas";
 import { useThemeStore } from "../store/themeStore";
 
 export function SettingsPage() {
@@ -10,7 +10,10 @@ export function SettingsPage() {
   const setRunner = useSetRunner();
   const setDataSources = useSetDataSources();
   const setSchedule = useSetSchedule();
+  const setPipelineConfig = useSetPipelineConfig();
   const [intervalInput, setIntervalInput] = useState<string>("");
+  const [maxSourcesInput, setMaxSourcesInput] = useState<string>("");
+  const [cachedCountInput, setCachedCountInput] = useState<string>("");
 
   const handleToggle = (name: string) => {
     if (setRunner.isPending) return;
@@ -79,9 +82,66 @@ export function SettingsPage() {
               <FormField label="Daily Schedule (UTC hour)" value={String(config.schedule_hour)} />
               <FormField label="Ideas per Run" value={String(config.ideas_per_run)} />
             </div>
-            <p style={{ fontSize: 12, color: "var(--text-muted)" }}>
-              Edit these values in <code style={{ background: "var(--bg)", padding: "2px 6px", borderRadius: 4, fontSize: 11 }}>backend/.env</code> and restart to apply.
+            <p style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 20 }}>
+              Schedule and ideas count: edit in <code style={{ background: "var(--bg)", padding: "2px 6px", borderRadius: 4, fontSize: 11 }}>backend/.env</code> and restart.
             </p>
+            <div style={{ borderTop: "1px solid var(--border)", paddingTop: 20 }}>
+              <p style={{ fontSize: 14, fontWeight: 500, color: "var(--text-primary)", marginBottom: 4 }}>Source Limits</p>
+              <p style={{ fontSize: 13, color: "var(--text-muted)", marginBottom: 16 }}>
+                Cap how many new sources are ingested and how many cached analyses are loaded per run.
+              </p>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, marginBottom: 16 }}>
+                <div>
+                  <label style={{ display: "block", fontSize: 13, fontWeight: 500, color: "var(--text-secondary)", marginBottom: 8 }}>
+                    Max New Sources per Run
+                  </label>
+                  <input
+                    type="number" min={1}
+                    value={maxSourcesInput || config.max_sources_per_run}
+                    onChange={e => setMaxSourcesInput(e.target.value)}
+                    style={{
+                      width: "100%", padding: "10px 12px", fontSize: 14,
+                      borderRadius: 8, border: "1px solid var(--border)",
+                      background: "var(--bg)", color: "var(--text-primary)", fontFamily: "inherit",
+                      boxSizing: "border-box",
+                    }}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: "block", fontSize: 13, fontWeight: 500, color: "var(--text-secondary)", marginBottom: 8 }}>
+                    Cached Analyses to Load
+                  </label>
+                  <input
+                    type="number" min={0}
+                    value={cachedCountInput || config.cached_analyses_count}
+                    onChange={e => setCachedCountInput(e.target.value)}
+                    style={{
+                      width: "100%", padding: "10px 12px", fontSize: 14,
+                      borderRadius: 8, border: "1px solid var(--border)",
+                      background: "var(--bg)", color: "var(--text-primary)", fontFamily: "inherit",
+                      boxSizing: "border-box",
+                    }}
+                  />
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  const maxSrc = Math.max(1, parseInt(maxSourcesInput || String(config.max_sources_per_run), 10));
+                  const cached = Math.max(0, parseInt(cachedCountInput || String(config.cached_analyses_count), 10));
+                  setPipelineConfig.mutate({ max_sources_per_run: maxSrc, cached_analyses_count: cached });
+                  setMaxSourcesInput("");
+                  setCachedCountInput("");
+                }}
+                disabled={setPipelineConfig.isPending}
+                style={{
+                  padding: "10px 20px", borderRadius: 8,
+                  background: "var(--accent)", color: "white", border: "none",
+                  fontSize: 14, fontWeight: 500, cursor: "pointer",
+                }}
+              >
+                {setPipelineConfig.isPending ? "Saving…" : "Save"}
+              </button>
+            </div>
           </>
         ) : <p style={{ color: "var(--text-muted)", fontSize: 14 }}>Loading...</p>}
       </SettingsCard>

@@ -25,4 +25,6 @@ export const api = {
   getSchedule: (): Promise<ScheduleStatus> => http.get("/system/schedule").then(r => r.data),
   setSchedule: (enabled: boolean, interval_minutes: number): Promise<ScheduleStatus> =>
     http.put("/system/schedule", { enabled, interval_minutes }).then(r => r.data),
+  setPipelineConfig: (max_sources_per_run: number, cached_analyses_count: number): Promise<SystemConfig> =>
+    http.put("/system/pipeline-config", { max_sources_per_run, cached_analyses_count }).then(r => r.data),
 };

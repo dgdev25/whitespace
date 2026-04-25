@@ -33,6 +33,15 @@ export const useSetSchedule = () => {
   });
 };
 
+export const useSetPipelineConfig = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ max_sources_per_run, cached_analyses_count }: { max_sources_per_run: number; cached_analyses_count: number }) =>
+      api.setPipelineConfig(max_sources_per_run, cached_analyses_count),
+    onSuccess: (data) => qc.setQueryData(["config"], data),
+  });
+};
+
 // Always polls every 8s so the NavBar always knows true pipeline state.
 export const usePipelineStatus = () =>
   useQuery({
