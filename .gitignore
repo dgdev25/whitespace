@@ -1,4 +1,6 @@
 .worktrees/
+.claude-flow/
+docs/superpowers/
 __pycache__/
 *.pyc
 *.pyo
