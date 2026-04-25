@@ -86,7 +86,9 @@ def test_fetch_handles_request_error(caplog):
     import logging
     import requests as req
     with patch("worker.stages.fetch.requests.get", side_effect=req.RequestException("timeout")):
-        with caplog.at_level(logging.WARNING):
-            papers = fetch_new_papers(orgs=["DeepMind"], categories=["cs.AI"], existing_ids=set())
+        with patch("worker.stages.fetch.feedparser.parse") as mock_parse:
+            mock_parse.return_value.entries = []
+            with caplog.at_level(logging.WARNING):
+                papers = fetch_new_papers(orgs=["DeepMind"], categories=["cs.AI"], existing_ids=set())
     assert papers == []
     assert "timeout" in caplog.text
