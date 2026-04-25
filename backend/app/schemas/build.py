@@ -27,7 +27,7 @@ class ProductSketch(BaseModel):
 class BuildOutputOut(BaseModel):
     id: str
     idea_id: str
-    product_sketch: ProductSketch
+    product_sketch: ProductSketch | dict
     technical_plan: str
     status: str
     created_at: datetime

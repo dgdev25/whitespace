@@ -30,3 +30,4 @@ line-length = 100
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "B"]
+ignore = ["B008"]  # FastAPI uses Depends() in function defaults — this is intentional
