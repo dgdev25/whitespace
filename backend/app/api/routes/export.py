@@ -1,3 +1,6 @@
+import html
+import io
+
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import Response
 from sqlalchemy import select
@@ -115,13 +118,14 @@ async def export_pdf_route(
     risks = sketch.get("risks", [])
     monetisation = sketch.get("monetisation", [])
 
+    e = html.escape
     risks_html = "".join(
-        f"<li><strong>{r.get('title', '')}</strong>: {r.get('description', '')}</li>"
+        f"<li><strong>{e(r.get('title', ''))}</strong>: {e(r.get('description', ''))}</li>"
         for r in risks
     )
     monetisation_html = "".join(
-        f"<li><strong>{m.get('name', '')}</strong> ({m.get('fit', '')}): "
-        f"{m.get('description', '')}</li>"
+        f"<li><strong>{e(m.get('name', ''))}</strong> ({e(m.get('fit', ''))}):"
+        f" {e(m.get('description', ''))}</li>"
         for m in monetisation
     )
 
@@ -133,25 +137,23 @@ async def export_pdf_route(
   hr {{ border: 1px solid #ddd; }}
 </style></head>
 <body>
-  <h1>{idea.title}</h1>
-  <p>{idea.description}</p>
-  <h2>Why Novel</h2><p>{idea.why_novel}</p>
-  <h2>Who Builds This</h2><p>{idea.who_builds}</p>
-  <h2>Who Buys This</h2><p>{idea.who_buys}</p>
+  <h1>{e(idea.title)}</h1>
+  <p>{e(idea.description)}</p>
+  <h2>Why Novel</h2><p>{e(idea.why_novel)}</p>
+  <h2>Who Builds This</h2><p>{e(idea.who_builds)}</p>
+  <h2>Who Buys This</h2><p>{e(idea.who_buys)}</p>
   <hr/>
   <h2>Product Sketch</h2>
   <h3>Value Proposition</h3>
-  <p><strong>{sketch.get('value_prop_headline', '')}</strong></p>
-  <p>{sketch.get('value_prop_body', '')}</p>
-  <h3>Buyer Profile</h3><p>{sketch.get('buyer_profile', '')}</p>
+  <p><strong>{e(sketch.get('value_prop_headline', ''))}</strong></p>
+  <p>{e(sketch.get('value_prop_body', ''))}</p>
+  <h3>Buyer Profile</h3><p>{e(sketch.get('buyer_profile', ''))}</p>
   <h3>Risks</h3><ul>{risks_html}</ul>
   <h3>Monetisation</h3><ul>{monetisation_html}</ul>
   <hr/>
-  <h2>Technical Plan</h2><p>{build.technical_plan}</p>
+  <h2>Technical Plan</h2><pre>{e(build.technical_plan)}</pre>
 </body>
 </html>"""
-
-    import io  # noqa: PLC0415
 
     buffer = io.BytesIO()
     HTML(string=html_content).write_pdf(buffer)
