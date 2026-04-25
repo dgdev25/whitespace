@@ -11,7 +11,8 @@ class Settings(BaseSettings):
     pipeline_mode: str = "full"    # "full" | "stub"
     worker_schedule_hour: int = 2
     worker_schedule_minute: int = 0
-    arxiv_categories: str = "cs.LG,cs.AI,cs.SE,cs.HC,cs.AR,cs.DC,eess.SP"
+    arxiv_orgs: str = "DeepMind,Anthropic,OpenAI"
+    arxiv_categories: str = "cs.AI,cs.LG,cs.CL,cs.MA"
     ideas_per_run: int = 8
 
 settings = Settings()
