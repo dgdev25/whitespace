@@ -1,8 +1,7 @@
-import random
 from datetime import date
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import select
+from sqlalchemy import func as sqlfunc, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_session
@@ -36,11 +35,13 @@ async def today_feed(session: AsyncSession = Depends(get_session)):
 
 @router.get("/surprise", response_model=IdeaSummary)
 async def surprise(session: AsyncSession = Depends(get_session)):
-    result = await session.execute(select(Idea).where(Idea.is_featured == True))  # noqa: E712
-    ideas = result.scalars().all()
-    if not ideas:
+    result = await session.execute(
+        select(Idea).where(Idea.is_featured == True).order_by(sqlfunc.random()).limit(1)  # noqa: E712
+    )
+    idea = result.scalars().first()
+    if not idea:
         raise HTTPException(404, "No ideas available yet")
-    return IdeaSummary.model_validate(random.choice(ideas), from_attributes=True)
+    return IdeaSummary.model_validate(idea, from_attributes=True)
 
 
 @router.get("/{idea_id}", response_model=IdeaDetail)
