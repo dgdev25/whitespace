@@ -81,7 +81,7 @@ WORKER_SCHEDULE_MINUTE=0
 # AI lab orgs to source papers from (used with arXiv all: field search)
 ARXIV_ORGS=DeepMind,Anthropic,OpenAI
 # arXiv categories to filter within (combined with org search)
-ARXIV_CATEGORIES=cs.AI,cs.LG,cs.CL,cs.MA
+ARXIV_CATEGORIES=cs.AI,cs.LG,cs.CL,cs.MA,cs.SE,cs.HC,eess.SP
 IDEAS_PER_RUN=8
 EOF
   ok "Created $ENV_FILE — edit it to add API keys"
