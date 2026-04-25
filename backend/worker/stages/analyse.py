@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Optional
 
 from app.pipeline.json_parsing import run_and_parse_json
-from app.runners.selector import _default_runners, select_runner
+from app.runners.selector import _default_runners, select_runner_or_raise
 
 logger = logging.getLogger(__name__)
 
@@ -29,7 +29,7 @@ def _analyse_one(paper: dict, runner) -> Optional[dict]:
 
 def analyse_papers(papers: list[dict], runner=None) -> list[dict]:
     if runner is None:
-        runner = select_runner(_default_runners())
+        runner = select_runner_or_raise(_default_runners())
     results = []
     with ThreadPoolExecutor(max_workers=_MAX_WORKERS) as pool:
         futures = {pool.submit(_analyse_one, p, runner): p for p in papers}

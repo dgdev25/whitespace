@@ -1,6 +1,6 @@
 from datetime import date
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import func as sqlfunc
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -16,8 +16,8 @@ router = APIRouter(prefix="/ideas", tags=["ideas"])
 
 @router.get("/today", response_model=TodayFeed)
 async def today_feed(
-    limit: int = 20,
-    offset: int = 0,
+    limit: int = Query(20, ge=1, le=100),
+    offset: int = Query(0, ge=0),
     session: AsyncSession = Depends(get_session),
 ):
     today = date.today().isoformat()

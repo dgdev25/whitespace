@@ -1,5 +1,6 @@
 import html
 import io
+import re
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import Response
@@ -11,6 +12,18 @@ from app.db.models.build_output import BuildOutput
 from app.db.models.idea import Idea
 
 router = APIRouter(prefix="/export", tags=["export"])
+
+_MD_HEADER_RE = re.compile(r"^(#{1,6}\s)", re.MULTILINE)
+_MD_RULE_RE = re.compile(r"^(-{3,}|\*{3,}|_{3,})\s*$", re.MULTILINE)
+
+
+def _escape_md(text: str) -> str:
+    """Escape markdown structure characters that could break document layout."""
+    if not text:
+        return ""
+    text = _MD_HEADER_RE.sub(r"\\\1", text)
+    text = _MD_RULE_RE.sub(lambda m: f"\\{m.group(0)}", text)
+    return text
 
 
 def _build_markdown(idea: Idea, build: BuildOutput) -> str:
@@ -26,30 +39,31 @@ def _build_markdown(idea: Idea, build: BuildOutput) -> str:
         for m in monetisation
     )
 
-    return f"""# {idea.title}
+    e = _escape_md
+    return f"""# {e(idea.title)}
 
-{idea.description}
+{e(idea.description)}
 
 ## Why Novel
-{idea.why_novel}
+{e(idea.why_novel)}
 
 ## Who Builds This
-{idea.who_builds}
+{e(idea.who_builds)}
 
 ## Who Buys This
-{idea.who_buys}
+{e(idea.who_buys)}
 
 ---
 
 ## Product Sketch
 
 ### Value Proposition
-{sketch.get('value_prop_headline', '')}
+{e(sketch.get('value_prop_headline', ''))}
 
-{sketch.get('value_prop_body', '')}
+{e(sketch.get('value_prop_body', ''))}
 
 ### Buyer Profile
-{sketch.get('buyer_profile', '')}
+{e(sketch.get('buyer_profile', ''))}
 
 ### Risks
 {risks_md}
@@ -61,7 +75,7 @@ def _build_markdown(idea: Idea, build: BuildOutput) -> str:
 
 ## Technical Plan
 
-{build.technical_plan}
+{e(build.technical_plan)}
 """
 
 

@@ -20,14 +20,14 @@ class GeminiRunner(LLMRunner):
         if not api_key:
             raise RuntimeError("GEMINI_API_KEY missing")
         model = quote(os.getenv("GEMINI_MODEL", "gemini-2.0-flash"), safe="")
+        payload: dict = {"contents": [{"parts": [{"text": prompt}]}]}
+        if system:
+            payload["system_instruction"] = {"parts": [{"text": system}]}
         for attempt in range(_RETRIES + 1):
             resp = requests.post(
                 f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent",
                 params={"key": api_key},
-                json={
-                    "system_instruction": {"parts": [{"text": system}]},
-                    "contents": [{"parts": [{"text": prompt}]}],
-                },
+                json=payload,
                 timeout=60,
             )
             if resp.status_code == 429 and attempt < _RETRIES:

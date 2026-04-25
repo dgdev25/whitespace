@@ -16,7 +16,7 @@ class ConnectedIdea(Base):
     __tablename__ = "connected_ideas"
     id: Mapped[str] = mapped_column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     idea_id: Mapped[str] = mapped_column(ForeignKey("ideas.id", ondelete="CASCADE"), index=True)
-    connected_idea_id: Mapped[str] = mapped_column(ForeignKey("ideas.id", ondelete="CASCADE"))
+    connected_idea_id: Mapped[str] = mapped_column(ForeignKey("ideas.id", ondelete="CASCADE"), index=True)
     shared_paper_count: Mapped[int] = mapped_column(Integer, default=1)
     idea: Mapped[Idea] = relationship(foreign_keys=[idea_id], back_populates="connections")
     connected: Mapped[Idea] = relationship(foreign_keys=[connected_idea_id])

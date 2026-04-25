@@ -8,12 +8,13 @@ import { ConnectedIdeas } from "../components/ConnectedIdeas";
 export function IdeaDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { data: idea, isLoading } = useIdea(id!);
+  const { data: idea, isLoading, isError } = useIdea(id!);
   const { data: saved } = useSaved();
   const saveIdea = useSaveIdea();
   const unsaveIdea = useUnsaveIdea();
 
   if (isLoading) return <p style={{ padding: 20, color: "var(--text-muted)" }}>Loading...</p>;
+  if (isError) return <p style={{ padding: 20, color: "var(--badge-emerging-text)" }}>Failed to load idea.</p>;
   if (!idea) return <p style={{ padding: 20 }}>Idea not found.</p>;
 
   const isSaved = saved?.some(s => s.idea.id === id);

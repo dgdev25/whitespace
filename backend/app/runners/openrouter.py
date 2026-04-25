@@ -18,16 +18,17 @@ class OpenRouterRunner(LLMRunner):
         api_key = os.getenv("OPENROUTER_API_KEY")
         if not api_key:
             raise RuntimeError("OPENROUTER_API_KEY missing")
+        messages = []
+        if system:
+            messages.append({"role": "system", "content": system})
+        messages.append({"role": "user", "content": prompt})
         for attempt in range(_RETRIES + 1):
             resp = requests.post(
                 "https://openrouter.ai/api/v1/chat/completions",
                 headers={"Authorization": f"Bearer {api_key}"},
                 json={
                     "model": os.getenv("OPENROUTER_ANALYSIS_MODEL", "anthropic/claude-haiku-4-5"),
-                    "messages": [
-                        {"role": "system", "content": system},
-                        {"role": "user", "content": prompt},
-                    ],
+                    "messages": messages,
                 },
                 timeout=60,
             )

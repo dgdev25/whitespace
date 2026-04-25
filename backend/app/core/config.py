@@ -5,7 +5,7 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
     app_name: str = "whitespace"
-    database_url: str = "postgresql+psycopg://whitespace:whitespace@localhost:5432/whitespace"
+    database_url: str = "sqlite+aiosqlite:///./whitespace.db"
     ruvector_base_url: str = "http://localhost:18732"
     embeddings_mode: str = "full"  # "full" | "stub"
     pipeline_mode: str = "full"    # "full" | "stub"
