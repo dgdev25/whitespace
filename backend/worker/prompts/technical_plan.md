@@ -7,6 +7,8 @@ Input idea:
 Title: {{title}}
 Description: {{description}}
 Why novel: {{why_novel}}
+Who builds: {{who_builds}}
+Who buys: {{who_buys}}
 Source papers: {{paper_ids}}
 
 Write a Markdown document with these sections:
