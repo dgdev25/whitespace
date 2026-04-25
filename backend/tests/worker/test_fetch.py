@@ -79,7 +79,9 @@ def test_fetch_skips_invalid_orgs(caplog):
                     categories=["cs.AI"],
                     existing_ids=set(),
                 )
+    call_url = mock_get.call_args[0][0]
     assert "bad<script>" in caplog.text
+    assert "ValidOrg" in call_url
 
 
 def test_fetch_handles_request_error(caplog):

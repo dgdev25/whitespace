@@ -12,7 +12,7 @@ _ORG_RE = re.compile(r"^[a-zA-Z0-9 _-]+$")
 
 
 def _extract_arxiv_id(url: str) -> str:
-    match = re.search(r"arxiv\.org/abs/([^v]+)", url)
+    match = re.search(r"arxiv\.org/abs/(.+?)(?:v\d+)?$", url)
     return match.group(1) if match else url
 
 
@@ -41,7 +41,7 @@ def fetch_new_papers(
         query = org_clause
 
     url = (
-        f"http://export.arxiv.org/api/query"
+        f"https://export.arxiv.org/api/query"
         f"?search_query={quote(query)}"
         f"&sortBy=submittedDate&sortOrder=descending"
         f"&max_results={max_results}"
@@ -62,10 +62,14 @@ def fetch_new_papers(
             continue
         papers.append({
             "arxiv_id": arxiv_id,
-            "title": entry.title.strip(),
-            "authors": ", ".join(a.name for a in entry.authors),
-            "abstract": entry.summary.strip(),
-            "categories": ", ".join(t.term for t in getattr(entry, "tags", [])),
+            "title": (getattr(entry, "title", "") or "").strip(),
+            "authors": ", ".join(
+                a.name for a in getattr(entry, "authors", [])
+            ),
+            "abstract": (getattr(entry, "summary", "") or "").strip(),
+            "categories": ", ".join(
+                t.term for t in getattr(entry, "tags", [])
+            ),
             "published_date": entry.get("published", "")[:10],
             "url": f"https://arxiv.org/abs/{arxiv_id}",
         })
