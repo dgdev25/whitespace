@@ -11,3 +11,5 @@ dist/
 *.egg-info/
 .pytest_cache/
 .DS_Store
+*.db
+*.sqlite
