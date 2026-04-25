@@ -9,7 +9,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db.base import Base
 
 if TYPE_CHECKING:
-    from app.db.models.chunk import Chunk
+    from .chunk import Chunk
 
 
 class Paper(Base):
