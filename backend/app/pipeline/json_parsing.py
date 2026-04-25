@@ -122,3 +122,11 @@ def run_and_parse_json(
     if isinstance(last_error, Exception):
         raise LLMJSONParseError(str(last_error))
     raise LLMJSONParseError("Unable to parse LLM response as JSON")
+
+
+def parse_json_response(response: str, expected_type: type = dict) -> dict | list:
+    """Parse a JSON response string, optionally verifying the top-level type."""
+    data = parse_llm_json(response)
+    if not isinstance(data, expected_type):
+        raise ValueError(f"Expected {expected_type.__name__}, got {type(data).__name__}")
+    return data
