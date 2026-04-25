@@ -19,5 +19,5 @@ class Chunk(Base):
     text: Mapped[str] = mapped_column(Text)
     chunk_index: Mapped[int] = mapped_column(Integer)
     token_count: Mapped[int] = mapped_column(Integer)
-    embedding_id: Mapped[str] = mapped_column(String, nullable=True)
+    embedding_id: Mapped[str | None] = mapped_column(String, nullable=True)
     paper: Mapped[Paper] = relationship(back_populates="chunks")
