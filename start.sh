@@ -29,8 +29,22 @@ trap cleanup EXIT INT TERM
 header "Whitespace v2 — startup"
 # ─────────────────────────────────────────────────────────────────────────────
 
+# ── stop existing services ────────────────────────────────────────────────────
+header "0/5  Stopping existing services"
+
+for port in 18730 18731; do
+  pids=$(lsof -ti tcp:"$port" 2>/dev/null || true)
+  if [[ -n "$pids" ]]; then
+    # shellcheck disable=SC2086
+    kill $pids 2>/dev/null || true
+    ok "Stopped existing process on port $port"
+  else
+    ok "Port $port is free"
+  fi
+done
+
 # ── prerequisites ─────────────────────────────────────────────────────────────
-header "1/6  Checking prerequisites"
+header "1/5  Checking prerequisites"
 
 command -v python3 &>/dev/null || die "python3 not found"
 command -v node    &>/dev/null || die "node not found"
@@ -38,7 +52,7 @@ command -v npm     &>/dev/null || die "npm not found"
 ok "python3 / node / npm present"
 
 # ── .env ──────────────────────────────────────────────────────────────────────
-header "2/6  Environment"
+header "2/5  Environment"
 
 ENV_FILE="$BACKEND/.env"
 if [[ ! -f "$ENV_FILE" ]]; then
@@ -82,7 +96,7 @@ source "$ENV_FILE"
 set +o allexport
 
 # ── Python deps ───────────────────────────────────────────────────────────────
-header "3/6  Python dependencies"
+header "3/5  Python dependencies"
 
 VENV="$BACKEND/.venv"
 if [[ ! -d "$VENV" ]]; then
@@ -108,7 +122,7 @@ else
 fi
 
 # ── database migrations ───────────────────────────────────────────────────────
-header "4/6  Database"
+header "4/5  Database"
 
 cd "$BACKEND"
 
@@ -126,155 +140,10 @@ else
 fi
 ok "Schema up to date"
 
-# ── LLM runner detection ──────────────────────────────────────────────────────
-header "5/6  Seeding database"
-
-detect_runner() {
-  # Returns the name of the first available runner, or "none"
-  if command -v claude &>/dev/null; then echo "claude_cli"; return; fi
-  if [[ -n "${ANTHROPIC_API_KEY:-}"  ]]; then echo "anthropic";  return; fi
-  if [[ -n "${GEMINI_API_KEY:-}"     ]]; then echo "gemini";     return; fi
-  if [[ -n "${OPENROUTER_API_KEY:-}" ]]; then echo "openrouter"; return; fi
-  if command -v codex &>/dev/null; then echo "codex_cli"; return; fi
-  echo "none"
-}
-
-RUNNER=$(detect_runner)
-
-# Count existing ideas
-IDEA_COUNT=$(python3 - <<'PYEOF'
-import os, sys
-os.environ.setdefault("DATABASE_URL", "sqlite+aiosqlite:///./whitespace.db")
-# Use a synchronous check regardless of driver
-db_url = os.environ.get("DATABASE_URL", "")
-sync_url = db_url.replace("+aiosqlite", "").replace("+asyncpg", "")
-try:
-    from sqlalchemy import create_engine, text
-    engine = create_engine(sync_url)
-    with engine.connect() as conn:
-        count = conn.execute(text("SELECT COUNT(*) FROM ideas")).scalar()
-    print(count)
-except Exception as e:
-    print(0)
-PYEOF
-)
-
-if [[ "$IDEA_COUNT" -gt 0 ]]; then
-  ok "Database already has $IDEA_COUNT idea(s) — skipping seed"
-elif [[ "$RUNNER" == "none" ]]; then
-  warn "No LLM runner detected — inserting fixture ideas"
-  python3 - <<'PYEOF'
-import os, uuid, json
-from datetime import datetime, timezone
-
-db_url = os.environ.get("DATABASE_URL", "sqlite+aiosqlite:///./whitespace.db")
-sync_url = db_url.replace("+aiosqlite", "").replace("+asyncpg", "")
-
-from sqlalchemy import create_engine, text
-engine = create_engine(sync_url)
-
-FIXTURE_IDEAS = [
-  {
-    "id": str(uuid.uuid4()),
-    "title": "Adaptive Curriculum Engine for Code Learning",
-    "description": "A tutoring system that constructs personalised coding exercises by analysing a learner's error patterns in real time, using contrastive self-supervised learning to map conceptual gaps.",
-    "why_novel": "Existing coding tutors serve static exercise banks. This approach derives exercises algorithmically from the learner's own mistakes, making the curriculum a function of the individual rather than a fixed sequence.",
-    "who_builds": "EdTech startup with an ML engineer who has worked on adaptive learning or recommendation systems.",
-    "who_buys": "Bootcamps, corporate L&D teams, and self-directed learners on platforms like Coursera or Udemy.",
-    "novelty_score": 0.82,
-    "feasibility_score": 0.74,
-    "badge": "novel",
-    "is_featured": True,
-    "featured_date": datetime.now(timezone.utc).date().isoformat(),
-    "paper_ids": json.dumps(["2401.00001", "2401.00002"]),
-  },
-  {
-    "id": str(uuid.uuid4()),
-    "title": "Federated Annotation Markets for Medical Imaging",
-    "description": "A marketplace where radiologists earn micro-payments for labelling medical images, with a federated learning layer that trains a shared model without moving patient data off-site.",
-    "why_novel": "Current labelling pipelines centralise sensitive data. Federated markets keep images on hospital servers while still producing a high-quality shared model — removing the legal and ethical barrier to multi-institution collaboration.",
-    "who_builds": "Health-tech founders with ML and HIPAA compliance experience, ideally with an existing radiology network.",
-    "who_buys": "Hospital systems, medical device companies, and radiology AI vendors who need large labelled datasets without cross-institution data sharing.",
-    "novelty_score": 0.78,
-    "feasibility_score": 0.61,
-    "badge": "feasible",
-    "is_featured": False,
-    "featured_date": None,
-    "paper_ids": json.dumps(["2401.00003"]),
-  },
-  {
-    "id": str(uuid.uuid4()),
-    "title": "Speculative Code Review via Diffusion Models",
-    "description": "A development tool that uses latent diffusion to hallucinate plausible future bug reports for a code change before it is merged, letting teams triage likely defects at review time.",
-    "why_novel": "Static analysers find known patterns; this generates novel hypothetical failure modes by sampling from a distribution conditioned on the diff, extending reviewer attention beyond rule-based heuristics.",
-    "who_builds": "A developer-tools company or open-source maintainer with experience in code LLMs and CI/CD integrations.",
-    "who_buys": "Engineering organisations where the cost of a production bug outweighs the review overhead — fintech, health-tech, critical infrastructure.",
-    "novelty_score": 0.91,
-    "feasibility_score": 0.52,
-    "badge": "speculative",
-    "is_featured": False,
-    "featured_date": None,
-    "paper_ids": json.dumps(["2401.00004", "2401.00005"]),
-  },
-  {
-    "id": str(uuid.uuid4()),
-    "title": "Context-Aware Accessibility Rewrites for Mobile UI",
-    "description": "An SDK that intercepts UI renders and rewrites tap targets, contrast ratios, and label text in real time based on ambient sensor data — dim light, shaking motion, or gloved hands.",
-    "why_novel": "Accessibility tools today are configured statically per disability category. Sensor-driven dynamic adaptation responds to situational impairment, which affects all users periodically but is ignored by current toolkits.",
-    "who_builds": "Mobile platform engineers or an accessibility-focused startup with iOS/Android SDK experience.",
-    "who_buys": "Large consumer app companies (banking, retail, travel) with global audiences and regulatory exposure to accessibility lawsuits.",
-    "novelty_score": 0.69,
-    "feasibility_score": 0.81,
-    "badge": "emerging",
-    "is_featured": False,
-    "featured_date": None,
-    "paper_ids": json.dumps(["2401.00006"]),
-  },
-]
-
-is_pg = sync_url.startswith("postgresql")
-if is_pg:
-    insert_sql = """INSERT INTO ideas
-      (id, title, description, why_novel, who_builds, who_buys,
-       novelty_score, feasibility_score, badge, is_featured,
-       featured_date, paper_ids, created_at)
-    VALUES (:id, :title, :description, :why_novel, :who_builds, :who_buys,
-            :novelty_score, :feasibility_score, :badge, :is_featured,
-            :featured_date, :paper_ids, CURRENT_TIMESTAMP)
-    ON CONFLICT DO NOTHING"""
-else:
-    insert_sql = """INSERT OR IGNORE INTO ideas
-      (id, title, description, why_novel, who_builds, who_buys,
-       novelty_score, feasibility_score, badge, is_featured,
-       featured_date, paper_ids, created_at)
-    VALUES (:id, :title, :description, :why_novel, :who_builds, :who_buys,
-            :novelty_score, :feasibility_score, :badge, :is_featured,
-            :featured_date, :paper_ids, CURRENT_TIMESTAMP)"""
-
-with engine.begin() as conn:
-    for idea in FIXTURE_IDEAS:
-        conn.execute(text(insert_sql), idea)
-
-print(f"Inserted {len(FIXTURE_IDEAS)} fixture ideas")
-PYEOF
-  ok "Fixture ideas inserted"
-else
-  info "LLM runner: $RUNNER — running pipeline to generate real ideas…"
-  info "(This fetches arXiv papers and calls your LLM — allow 2–5 minutes)"
-  python3 -c "
-from worker.db import SessionLocal
-from worker.orchestrator import run_daily_pipeline
-with SessionLocal() as s:
-    run_daily_pipeline(s)
-print('Pipeline complete')
-"
-  ok "Pipeline run complete"
-fi
-
 cd "$SCRIPT_DIR"
 
 # ── start servers ─────────────────────────────────────────────────────────────
-header "6/6  Starting servers"
+header "5/5  Starting servers"
 
 # Backend API
 info "Starting backend on http://localhost:18730 …"

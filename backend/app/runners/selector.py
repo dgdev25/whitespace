@@ -3,14 +3,16 @@ from app.runners.base import LLMRunner
 from app.runners.claude_cli import ClaudeCLIRunner
 from app.runners.codex_cli import CodexCLIRunner
 from app.runners.gemini import GeminiRunner
+from app.runners.gemini_cli import GeminiCLIRunner
 from app.runners.openrouter import OpenRouterRunner
 
 
 def _default_runners() -> list[LLMRunner]:
-    """Return the canonical ordered runner list (Claude CLI → Codex CLI → Gemini → Anthropic → OpenRouter)."""
+    """Return the canonical ordered runner list. CLI tools take priority over API keys."""
     return [
         ClaudeCLIRunner(),
         CodexCLIRunner(),
+        GeminiCLIRunner(),
         GeminiRunner(),
         AnthropicRunner(),
         OpenRouterRunner(),
