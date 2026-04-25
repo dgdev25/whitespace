@@ -21,6 +21,9 @@ from worker.stages.connect import compute_connections
 
 logger = logging.getLogger(__name__)
 
+MAX_NEW_PER_RUN = 20       # max new papers/posts to ingest per run
+CACHED_ANALYSES = 30       # cached analyses from prior runs to supplement new ones
+
 
 def _abstracts_to_pseudo_analyses(papers: list[dict]) -> list[dict]:
     return [
@@ -73,9 +76,9 @@ def run_daily_pipeline(session: Session) -> None:
                     len(raw_arxiv), len(raw_blogs), len(raw_s2))
 
         if raw_all:
-            # 2. Persist all new records
+            # 2. Persist all new records (capped per run)
             paper_records = []
-            for p in raw_all[:50]:
+            for p in raw_all[:MAX_NEW_PER_RUN]:
                 paper = Paper(
                     arxiv_id=p["arxiv_id"],
                     title=p["title"],
@@ -121,9 +124,29 @@ def run_daily_pipeline(session: Session) -> None:
                 for p, _ in paper_records
             ]
 
-            prog.emit("analyse", f"Analysing {len(paper_dicts)} sources…", "running")
-            analyses = analyse_papers(paper_dicts)
-            prog.emit("analyse", f"Analysed {len(analyses)} sources", "done")
+            # 4. Analyse only new papers; load cached analyses for the rest
+            prog.emit("analyse", f"Analysing {len(paper_dicts)} new sources…", "running")
+            new_analyses = analyse_papers(paper_dicts)
+
+            # Save analyses back to paper records for future cache hits
+            arxiv_to_analysis = {a["arxiv_id"]: a for a in new_analyses}
+            for paper, _ in paper_records:
+                if paper.arxiv_id in arxiv_to_analysis:
+                    paper.analysis = arxiv_to_analysis[paper.arxiv_id]
+            session.commit()
+
+            # Load cached analyses from previously-analysed papers
+            cached_papers = (
+                session.query(Paper)
+                .filter(Paper.analysis.isnot(None))
+                .filter(~Paper.arxiv_id.in_({p.arxiv_id for p, _ in paper_records}))
+                .order_by(Paper.created_at.desc())
+                .limit(CACHED_ANALYSES)
+                .all()
+            )
+            cached_analyses = [p.analysis for p in cached_papers if p.analysis]
+            analyses = new_analyses + cached_analyses
+            prog.emit("analyse", f"Analysed {len(new_analyses)} new + {len(cached_analyses)} cached", "done")
 
         else:
             prog.emit("fetch_arxiv", "No new content — re-synthesising from existing pool", "done")
@@ -140,18 +163,20 @@ def run_daily_pipeline(session: Session) -> None:
             run.papers_fetched = 0
             session.commit()
 
-            paper_dicts = [
-                {
-                    "title": p.title,
-                    "abstract": p.abstract,
-                    "full_text": p.full_text,
-                    "arxiv_id": p.arxiv_id,
-                    "source": getattr(p, "source", "arxiv"),
-                }
-                for p in existing_papers
-            ]
-            analyses = _abstracts_to_pseudo_analyses(paper_dicts)
-            prog.emit("analyse", f"Built {len(analyses)} analyses from existing pool", "done")
+            # Prefer cached LLM analyses; fall back to pseudo-analyses for papers without one
+            cached = [p for p in existing_papers if p.analysis]
+            uncached = [p for p in existing_papers if not p.analysis]
+
+            analyses = [p.analysis for p in cached]
+            if uncached:
+                pseudo_dicts = [
+                    {"title": p.title, "abstract": p.abstract, "full_text": p.full_text,
+                     "arxiv_id": p.arxiv_id, "source": getattr(p, "source", "arxiv")}
+                    for p in uncached[:10]
+                ]
+                analyses += _abstracts_to_pseudo_analyses(pseudo_dicts)
+
+            prog.emit("analyse", f"{len(cached)} cached + {len(uncached[:10])} pseudo analyses", "done")
 
         # 5. Critique
         prog.emit("critique", "Applying critical thinking across all sources…", "running")
