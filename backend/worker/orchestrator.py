@@ -8,7 +8,10 @@ from app.db.models.chunk import Chunk
 from app.db.models.ingestion_run import IngestionRun
 from app.pipeline.chunking import chunk_text
 from worker.stages.fetch import fetch_new_papers
+from worker.stages.fetch_blogs import fetch_blog_posts
+from worker.stages.fetch_semantic_scholar import fetch_semantic_scholar_papers
 from worker.stages.analyse import analyse_papers
+from worker.stages.critique import critique_analyses
 from worker.stages.gap_map import map_gaps
 from worker.stages.synthesise import synthesise_ideas
 from worker.stages.score import score_ideas
@@ -47,25 +50,39 @@ def run_daily_pipeline(session: Session) -> None:
     session.refresh(run)
 
     try:
-        # 1. Fetch new arXiv papers
+        # 1. Fetch from all sources
         existing_ids = {r[0] for r in session.execute(text("SELECT arxiv_id FROM papers")).all()}
         orgs = [o.strip() for o in settings.arxiv_orgs.split(",")]
         categories = [c.strip() for c in settings.arxiv_categories.split(",")]
-        raw_papers = fetch_new_papers(orgs=orgs, categories=categories, existing_ids=existing_ids)
 
-        if raw_papers:
-            # 2. Persist paper records
+        raw_arxiv = fetch_new_papers(orgs=orgs, categories=categories, existing_ids=existing_ids)
+        all_existing = existing_ids | {p["arxiv_id"] for p in raw_arxiv}
+
+        raw_blogs = fetch_blog_posts(existing_ids=all_existing)
+        all_existing |= {p["arxiv_id"] for p in raw_blogs}
+
+        raw_s2 = fetch_semantic_scholar_papers(existing_ids=all_existing)
+
+        raw_all = raw_arxiv + raw_blogs + raw_s2
+        logger.info(
+            "Fetched — arXiv: %d, blogs: %d, Semantic Scholar: %d",
+            len(raw_arxiv), len(raw_blogs), len(raw_s2),
+        )
+
+        if raw_all:
+            # 2. Persist all new records
             paper_records = []
-            for p in raw_papers[:30]:
+            for p in raw_all[:50]:
                 paper = Paper(
                     arxiv_id=p["arxiv_id"],
                     title=p["title"],
                     authors=p["authors"],
-                    abstract=p["abstract"],
-                    full_text=p.get("abstract", ""),
+                    abstract=p.get("abstract", ""),
+                    full_text=p.get("full_text") or p.get("abstract", ""),
                     categories=p["categories"],
                     published_date=p["published_date"],
-                    url=p["url"],
+                    url=p.get("url", ""),
+                    source=p.get("source", "arxiv"),
                 )
                 session.add(paper)
                 paper_records.append((paper, p))
@@ -73,10 +90,10 @@ def run_daily_pipeline(session: Session) -> None:
             for paper, _ in paper_records:
                 session.refresh(paper)
 
-            run.papers_fetched = len(paper_records)
+            run.papers_fetched = len([p for p in paper_records if p[1].get("source", "arxiv") == "arxiv"])
             session.commit()
 
-            # 3. Chunk papers
+            # 3. Chunk papers (arxiv + semantic scholar only — blogs are already plain text)
             for paper, p in paper_records:
                 text_to_chunk = p.get("abstract", "")
                 if text_to_chunk:
@@ -91,22 +108,25 @@ def run_daily_pipeline(session: Session) -> None:
             session.commit()
 
             paper_dicts = [
-                {"title": p.title, "abstract": p.abstract,
-                 "full_text": p.full_text, "arxiv_id": p.arxiv_id}
+                {
+                    "title": p.title,
+                    "abstract": p.abstract,
+                    "full_text": p.full_text,
+                    "arxiv_id": p.arxiv_id,
+                    "source": p.source,
+                }
                 for p, _ in paper_records
             ]
 
-            # 4. Full analysis path (new papers — worth the per-paper LLM calls)
+            # 4. Analyse all sources in parallel
             analyses = analyse_papers(paper_dicts)
 
         else:
-            # No new papers — re-synthesise from the existing pool.
-            # Skip per-paper LLM analysis; build pseudo-analyses from abstracts
-            # so only 2 LLM calls are needed (gap_map + synthesise).
-            logger.info("No new papers — re-synthesising from existing pool (fast path)")
-            existing_papers = session.query(Paper).order_by(Paper.published_date.desc()).limit(30).all()
+            # No new content — re-synthesise from existing pool (fast path)
+            logger.info("No new content — re-synthesising from existing pool (fast path)")
+            existing_papers = session.query(Paper).order_by(Paper.published_date.desc()).limit(50).all()
             if not existing_papers:
-                logger.info("No papers in DB yet — skipping")
+                logger.info("No content in DB yet — skipping")
                 run.completed_at = datetime.now(timezone.utc)
                 session.commit()
                 return
@@ -115,23 +135,31 @@ def run_daily_pipeline(session: Session) -> None:
             session.commit()
 
             paper_dicts = [
-                {"title": p.title, "abstract": p.abstract,
-                 "full_text": p.full_text, "arxiv_id": p.arxiv_id}
+                {
+                    "title": p.title,
+                    "abstract": p.abstract,
+                    "full_text": p.full_text,
+                    "arxiv_id": p.arxiv_id,
+                    "source": getattr(p, "source", "arxiv"),
+                }
                 for p in existing_papers
             ]
             analyses = _abstracts_to_pseudo_analyses(paper_dicts)
 
-        # 5. Gap map → Synthesise → Score
-        gaps = map_gaps(analyses)
+        # 5. Critical thinking pass — flags hype, tensions, credible signals
+        critique = critique_analyses(analyses)
+
+        # 6. Gap map (informed by critique) → Synthesise → Score
+        gaps = map_gaps(analyses, critique=critique)
         ideas_raw = synthesise_ideas(gaps, n=settings.ideas_per_run)
         ideas_scored = score_ideas(ideas_raw)
 
-        # 6. Select top N, persist
+        # 7. Select top N, persist
         idea_records = select_and_persist(
             session, ideas_scored, n=settings.ideas_per_run, run_id=run.id
         )
 
-        # 7. Compute connections
+        # 8. Compute connections
         compute_connections(session, idea_records)
 
         run.ideas_generated = len(idea_records)

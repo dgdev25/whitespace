@@ -24,6 +24,7 @@ class Paper(Base):
     categories: Mapped[str] = mapped_column(String(256))
     published_date: Mapped[str] = mapped_column(String(32))
     url: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    source: Mapped[str] = mapped_column(String(32), default="arxiv", server_default="arxiv")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     chunks: Mapped[list[Chunk]] = relationship(
         back_populates="paper", cascade="all, delete-orphan"
