@@ -64,8 +64,10 @@ PIPELINE_MODE=full
 WORKER_SCHEDULE_HOUR=2
 WORKER_SCHEDULE_MINUTE=0
 
-# arXiv categories to ingest
-ARXIV_CATEGORIES=cs.LG,cs.AI,cs.SE,cs.HC
+# AI lab orgs to source papers from (used with arXiv all: field search)
+ARXIV_ORGS=DeepMind,Anthropic,OpenAI
+# arXiv categories to filter within (combined with org search)
+ARXIV_CATEGORIES=cs.AI,cs.LG,cs.CL,cs.MA
 IDEAS_PER_RUN=8
 EOF
   ok "Created $ENV_FILE — edit it to add API keys"
@@ -277,7 +279,7 @@ header "6/6  Starting servers"
 # Backend API
 info "Starting backend on http://localhost:18730 …"
 (cd "$BACKEND" && source "$VENV/bin/activate" && \
-  uvicorn app.main:app --port 18730 --log-level warning 2>&1 \
+  uvicorn app.main:app --port 18730 --reload --log-level warning 2>&1 \
   | sed 's/^/  [api] /') &
 PIDS+=($!)
 
