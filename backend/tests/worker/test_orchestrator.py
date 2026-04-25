@@ -60,7 +60,7 @@ def test_pipeline_runs_with_stubs(sync_session):
         ),
         patch(
             "worker.orchestrator.score_ideas",
-            side_effect=lambda x, **kw: x,
+            side_effect=lambda x, **_: x,
         ),
     ):
         run_daily_pipeline(sync_session)
