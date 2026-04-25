@@ -60,7 +60,7 @@ def _extract_balanced_json(text: str) -> str | None:
     return None
 
 
-def parse_llm_json(response_text: str) -> dict[str, Any]:
+def parse_llm_json(response_text: str) -> Any:
     cleaned = _strip_ansi(response_text).strip()
     if not cleaned:
         raise LLMJSONParseError("Empty LLM response")
@@ -82,9 +82,8 @@ def parse_llm_json(response_text: str) -> dict[str, Any]:
         seen.add(candidate)
         try:
             parsed = json.loads(candidate)
-            if isinstance(parsed, dict):
+            if isinstance(parsed, (dict, list)):
                 return parsed
-            raise LLMJSONParseError("Parsed JSON was not an object")
         except json.JSONDecodeError:
             continue
 

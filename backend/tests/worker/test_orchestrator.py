@@ -4,6 +4,7 @@ from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 from app.db.base import Base
 from app.db.models import *  # noqa: F401,F403 — registers all models with Base.metadata
+from worker.orchestrator import run_daily_pipeline
 
 
 @pytest.fixture
@@ -32,7 +33,7 @@ def test_pipeline_runs_with_stubs(sync_session):
 
     with (
         patch(
-            "worker.stages.fetch.fetch_new_papers",
+            "worker.orchestrator.fetch_new_papers",
             return_value=[
                 {
                     "arxiv_id": "2601.00001",
@@ -46,24 +47,22 @@ def test_pipeline_runs_with_stubs(sync_session):
             ],
         ),
         patch(
-            "worker.stages.analyse.analyse_papers",
+            "worker.orchestrator.analyse_papers",
             return_value=[{"arxiv_id": "2601.00001", "gaps": ["gap1"]}],
         ),
         patch(
-            "worker.stages.gap_map.map_gaps",
+            "worker.orchestrator.map_gaps",
             return_value={"gaps": ["gap1"]},
         ),
         patch(
-            "worker.stages.synthesise.synthesise_ideas",
+            "worker.orchestrator.synthesise_ideas",
             return_value=stub_ideas,
         ),
         patch(
-            "worker.stages.score.score_ideas",
+            "worker.orchestrator.score_ideas",
             side_effect=lambda x, **kw: x,
         ),
     ):
-        from worker.orchestrator import run_daily_pipeline
-
         run_daily_pipeline(sync_session)
 
     count = sync_session.execute(text("SELECT COUNT(*) FROM ideas")).scalar()

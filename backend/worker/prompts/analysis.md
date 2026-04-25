@@ -12,3 +12,8 @@ For the provided paper, generate a JSON response with the following structure:
 Be concise but comprehensive. Extract actual claims, methods, and limitations from the paper.
 
 IMPORTANT: Respond ONLY with a raw JSON object. Do not include markdown code fences (```), explanations, or any text outside the JSON object itself.
+
+Paper to analyse:
+Title: {{title}}
+Abstract: {{abstract}}
+Full text excerpt: {{full_text}}

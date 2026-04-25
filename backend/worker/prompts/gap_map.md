@@ -10,3 +10,6 @@ Analyze the provided paper analyses and generate a JSON response with the follow
 Be specific and analytical. Focus on substantive gaps and contradictions that represent interesting research opportunities.
 
 IMPORTANT: Respond ONLY with a raw JSON object. Do not include markdown code fences (```), explanations, or any text outside the JSON object itself.
+
+Paper analyses:
+{{analyses}}
