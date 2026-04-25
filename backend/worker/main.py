@@ -15,13 +15,15 @@ def _run():
 
 
 def main():
-    # First-run bootstrap: if no ideas exist, run immediately
-    with SessionLocal() as session:
-        from sqlalchemy import text
-        count = session.execute(text("SELECT COUNT(*) FROM ideas")).scalar()
-        if count == 0:
-            logger.info("Empty database — running pipeline immediately")
-            run_daily_pipeline(session)
+    from sqlalchemy import text
+    try:
+        with SessionLocal() as session:
+            count = session.execute(text("SELECT COUNT(*) FROM ideas")).scalar()
+            if count == 0:
+                logger.info("Empty database — running pipeline immediately")
+                run_daily_pipeline(session)
+    except Exception as exc:
+        logger.warning("Bootstrap check failed — skipping immediate run: %s", exc)
 
     scheduler = BlockingScheduler()
     scheduler.add_job(
