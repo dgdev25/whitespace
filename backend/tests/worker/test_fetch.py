@@ -1,7 +1,7 @@
 from unittest.mock import patch, MagicMock
 from worker.stages.fetch import fetch_new_papers
 
-def test_fetch_deduplicates_existing(tmp_path):
+def test_fetch_deduplicates_existing():
     existing_ids = {"2601.00001"}
     mock_entry = MagicMock()
     mock_entry.id = "http://arxiv.org/abs/2601.00001v1"
