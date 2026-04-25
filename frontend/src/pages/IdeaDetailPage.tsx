@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useIdea } from "../hooks/useIdeas";
 import { useSaveIdea, useUnsaveIdea, useSaved } from "../hooks/useSaved";
@@ -77,7 +78,7 @@ export function IdeaDetailPage() {
   );
 }
 
-function Section({ label, color, children }: { label: string; color: string; children: React.ReactNode }) {
+function Section({ label, color, children }: { label: string; color: string; children: ReactNode }) {
   return (
     <div style={{ marginBottom: 16 }}>
       <p style={{ fontSize: 9, color, letterSpacing: 1, fontWeight: 700, marginBottom: 6 }}>{label}</p>
