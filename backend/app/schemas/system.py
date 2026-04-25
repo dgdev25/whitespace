@@ -47,5 +47,16 @@ class PipelineStatusOut(BaseModel):
     last_completed_at: str | None
 
 
+class ScheduleConfigIn(BaseModel):
+    enabled: bool
+    interval_minutes: int  # how often to auto-run; 0 = use daily cron
+
+
+class ScheduleStatusOut(BaseModel):
+    enabled: bool
+    interval_minutes: int
+    next_run_at: str | None
+
+
 class RunnerPreferenceIn(BaseModel):
     name: str | None

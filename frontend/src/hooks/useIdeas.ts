@@ -23,6 +23,15 @@ export const useSetRunner = () => {
 };
 
 export const useHistory = () => useQuery({ queryKey: ["history"], queryFn: api.getHistory });
+export const useSchedule = () => useQuery({ queryKey: ["schedule"], queryFn: api.getSchedule, staleTime: 10_000 });
+export const useSetSchedule = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ enabled, interval_minutes }: { enabled: boolean; interval_minutes: number }) =>
+      api.setSchedule(enabled, interval_minutes),
+    onSuccess: (data) => qc.setQueryData(["schedule"], data),
+  });
+};
 
 // Always polls every 8s so the NavBar always knows true pipeline state.
 export const usePipelineStatus = () =>

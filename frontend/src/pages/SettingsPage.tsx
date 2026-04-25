@@ -1,12 +1,16 @@
-import { useRunners, useSystemConfig, useSetRunner, useSetDataSources } from "../hooks/useIdeas";
+import { useState } from "react";
+import { useRunners, useSystemConfig, useSetRunner, useSetDataSources, useSchedule, useSetSchedule } from "../hooks/useIdeas";
 import { useThemeStore } from "../store/themeStore";
 
 export function SettingsPage() {
   const { data: runners } = useRunners();
   const { data: config } = useSystemConfig();
+  const { data: schedule } = useSchedule();
   const { theme, toggle } = useThemeStore();
   const setRunner = useSetRunner();
   const setDataSources = useSetDataSources();
+  const setSchedule = useSetSchedule();
+  const [intervalInput, setIntervalInput] = useState<string>("");
 
   const handleToggle = (name: string) => {
     if (setRunner.isPending) return;
@@ -109,6 +113,78 @@ export function SettingsPage() {
               }}
             />
           </>
+        ) : <p style={{ color: "var(--text-muted)", fontSize: 14 }}>Loading...</p>}
+      </SettingsCard>
+
+      {/* Auto-Run Schedule */}
+      <SettingsCard title="Auto-Run Schedule" description="Run the pipeline automatically at a fixed interval in addition to manual refreshes.">
+        {schedule ? (
+          <div>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
+              <div>
+                <p style={{ fontSize: 14, fontWeight: 500, color: "var(--text-primary)" }}>
+                  {schedule.enabled ? "Enabled" : "Disabled"}
+                </p>
+                {schedule.enabled && schedule.next_run_at && (
+                  <p style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2 }}>
+                    Next run: {new Date(schedule.next_run_at).toLocaleTimeString()}
+                  </p>
+                )}
+              </div>
+              <button
+                onClick={() => setSchedule.mutate({ enabled: !schedule.enabled, interval_minutes: schedule.interval_minutes })}
+                disabled={setSchedule.isPending}
+                style={{
+                  width: 44, height: 24, borderRadius: 999, border: "none", padding: 0,
+                  background: schedule.enabled ? "var(--accent)" : "var(--border)",
+                  position: "relative", flexShrink: 0, cursor: "pointer", transition: "background 0.2s",
+                }}
+              >
+                <span style={{
+                  position: "absolute", top: 3, left: schedule.enabled ? 23 : 3,
+                  width: 18, height: 18, borderRadius: "50%", background: "white",
+                  boxShadow: "0 1px 3px rgba(0,0,0,0.25)", transition: "left 0.2s",
+                }} />
+              </button>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <div style={{ flex: 1 }}>
+                <label style={{ display: "block", fontSize: 13, fontWeight: 500, color: "var(--text-secondary)", marginBottom: 8 }}>
+                  Interval (minutes)
+                </label>
+                <input
+                  type="number"
+                  min={5}
+                  value={intervalInput || schedule.interval_minutes}
+                  onChange={e => setIntervalInput(e.target.value)}
+                  style={{
+                    width: "100%", padding: "10px 12px", fontSize: 14,
+                    borderRadius: 8, border: "1px solid var(--border)",
+                    background: "var(--bg)", color: "var(--text-primary)", fontFamily: "inherit",
+                    boxSizing: "border-box",
+                  }}
+                />
+              </div>
+              <button
+                onClick={() => {
+                  const mins = Math.max(5, parseInt(intervalInput || String(schedule.interval_minutes), 10));
+                  setSchedule.mutate({ enabled: schedule.enabled, interval_minutes: mins });
+                  setIntervalInput("");
+                }}
+                disabled={setSchedule.isPending}
+                style={{
+                  marginTop: 28, padding: "10px 20px", borderRadius: 8,
+                  background: "var(--accent)", color: "white", border: "none",
+                  fontSize: 14, fontWeight: 500, cursor: "pointer", whiteSpace: "nowrap",
+                }}
+              >
+                Apply
+              </button>
+            </div>
+            <p style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 10 }}>
+              Minimum 5 minutes. The pipeline skips if already running.
+            </p>
+          </div>
         ) : <p style={{ color: "var(--text-muted)", fontSize: 14 }}>Loading...</p>}
       </SettingsCard>
 

@@ -1,13 +1,17 @@
+import asyncio
+import json
 import logging
 import threading
+from datetime import datetime, timezone, timedelta
 
 from fastapi import APIRouter, Depends
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
+from sse_starlette.sse import EventSourceResponse
 
 from app.api.deps import get_session
 from app.core.config import settings
-from app.schemas.system import DataSourcesIn, HealthOut, PipelineRunOut, PipelineStatusOut, RunnerOut, RunnerPreferenceIn, RunnersOut, SystemConfigOut
+from app.schemas.system import DataSourcesIn, HealthOut, PipelineRunOut, PipelineStatusOut, RunnerOut, RunnerPreferenceIn, RunnersOut, ScheduleConfigIn, ScheduleStatusOut, SystemConfigOut
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/system", tags=["system"])
@@ -16,6 +20,12 @@ _pipeline_lock = threading.Lock()
 _preferred_runner: str | None = None
 _active_orgs: list[str] | None = None       # None = use all from settings
 _active_categories: list[str] | None = None  # None = use all from settings
+
+# Scheduling state
+_schedule_enabled: bool = False
+_schedule_interval_minutes: int = 60
+_schedule_next_run: datetime | None = None
+_schedule_timer: threading.Timer | None = None
 
 
 def _parse_setting(value: str) -> list[str]:
@@ -121,6 +131,84 @@ async def run_pipeline():
     t = threading.Thread(target=_task, daemon=True)
     t.start()
     return PipelineRunOut(status="started", message="Pipeline started in background.")
+
+
+@router.get("/pipeline/stream")
+async def pipeline_stream():
+    """SSE endpoint — streams pipeline progress events as they are emitted."""
+    from worker.progress import get_snapshot
+
+    async def generate():
+        idx = 0
+        # Stream for up to 20 minutes then close
+        for _ in range(2400):
+            events, active = get_snapshot(idx)
+            for event in events:
+                idx += 1
+                yield {"data": json.dumps(event)}
+            # Close when pipeline finishes and all events have been sent
+            if not active and idx > 0:
+                return
+            await asyncio.sleep(0.5)
+
+    return EventSourceResponse(generate())
+
+
+def _schedule_tick():
+    """Called by the recurring timer — runs the pipeline then reschedules."""
+    global _schedule_next_run, _schedule_timer
+    if not _schedule_enabled:
+        return
+    if _pipeline_lock.acquire(blocking=False):
+        def _task():
+            try:
+                _run_pipeline_sync()
+            finally:
+                _pipeline_lock.release()
+        threading.Thread(target=_task, daemon=True).start()
+    # Reschedule regardless of whether we ran (don't pile up if already running)
+    _schedule_next_run = datetime.now(timezone.utc) + timedelta(minutes=_schedule_interval_minutes)
+    _schedule_timer = threading.Timer(_schedule_interval_minutes * 60, _schedule_tick)
+    _schedule_timer.daemon = True
+    _schedule_timer.start()
+
+
+@router.get("/schedule", response_model=ScheduleStatusOut)
+async def get_schedule():
+    return ScheduleStatusOut(
+        enabled=_schedule_enabled,
+        interval_minutes=_schedule_interval_minutes,
+        next_run_at=_schedule_next_run.isoformat() if _schedule_next_run else None,
+    )
+
+
+@router.put("/schedule", response_model=ScheduleStatusOut)
+async def set_schedule(body: ScheduleConfigIn):
+    global _schedule_enabled, _schedule_interval_minutes, _schedule_next_run, _schedule_timer
+
+    # Cancel any existing timer
+    if _schedule_timer is not None:
+        _schedule_timer.cancel()
+        _schedule_timer = None
+
+    _schedule_enabled = body.enabled
+    _schedule_interval_minutes = max(5, body.interval_minutes)  # minimum 5 min
+
+    if _schedule_enabled:
+        _schedule_next_run = datetime.now(timezone.utc) + timedelta(minutes=_schedule_interval_minutes)
+        _schedule_timer = threading.Timer(_schedule_interval_minutes * 60, _schedule_tick)
+        _schedule_timer.daemon = True
+        _schedule_timer.start()
+        logger.info("Auto-schedule enabled: every %d minutes", _schedule_interval_minutes)
+    else:
+        _schedule_next_run = None
+        logger.info("Auto-schedule disabled")
+
+    return ScheduleStatusOut(
+        enabled=_schedule_enabled,
+        interval_minutes=_schedule_interval_minutes,
+        next_run_at=_schedule_next_run.isoformat() if _schedule_next_run else None,
+    )
 
 
 @router.get("/config", response_model=SystemConfigOut)

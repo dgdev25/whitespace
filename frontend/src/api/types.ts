@@ -1,3 +1,9 @@
+export interface ScheduleStatus {
+  enabled: boolean;
+  interval_minutes: number;
+  next_run_at: string | null;
+}
+
 export interface ConnectedIdea {
   id: string;
   title: string;

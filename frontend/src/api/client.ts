@@ -1,5 +1,5 @@
 import axios from "axios";
-import type { TodayFeed, IdeaDetail, IdeaSummary, SavedIdea, BuildOutput, RunnersResponse, SystemConfig, PipelineRunResponse, HistoryGroup } from "./types";
+import type { TodayFeed, IdeaDetail, IdeaSummary, SavedIdea, BuildOutput, RunnersResponse, SystemConfig, PipelineRunResponse, HistoryGroup, ScheduleStatus } from "./types";
 
 const http = axios.create({ baseURL: "/api" });
 
@@ -22,4 +22,7 @@ export const api = {
   getPipelineStatus: (): Promise<{ running: boolean; last_completed_run_id: string | null; last_completed_at: string | null }> =>
     http.get("/system/pipeline/status").then(r => r.data),
   getHistory: (): Promise<HistoryGroup[]> => http.get("/ideas/history").then(r => r.data),
+  getSchedule: (): Promise<ScheduleStatus> => http.get("/system/schedule").then(r => r.data),
+  setSchedule: (enabled: boolean, interval_minutes: number): Promise<ScheduleStatus> =>
+    http.put("/system/schedule", { enabled, interval_minutes }).then(r => r.data),
 };

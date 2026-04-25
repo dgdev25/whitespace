@@ -1,8 +1,10 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { useThemeStore } from "../store/themeStore";
 import { useTriggerPipeline, usePipelineStatus } from "../hooks/useIdeas";
+import { usePipelineStream } from "../hooks/usePipelineStream";
+import { PipelineProgress } from "./PipelineProgress";
 
 export function NavBar() {
   const { theme, toggle } = useThemeStore();
@@ -10,9 +12,26 @@ export function NavBar() {
   const qc = useQueryClient();
   const triggerPipeline = useTriggerPipeline();
   const { data: pipelineStatus } = usePipelineStatus();
+  const [showProgress, setShowProgress] = useState(false);
 
   const isRunning = pipelineStatus?.running ?? false;
   const prevRunIdRef = useRef<string | null | undefined>(undefined);
+
+  const steps = usePipelineStream(isRunning || triggerPipeline.isPending);
+
+  // Show progress panel when running; hide 3s after completion
+  useEffect(() => {
+    if (isRunning || triggerPipeline.isPending) {
+      setShowProgress(true);
+    }
+  }, [isRunning, triggerPipeline.isPending]);
+
+  useEffect(() => {
+    if (!isRunning && !triggerPipeline.isPending && showProgress) {
+      const t = setTimeout(() => setShowProgress(false), 3000);
+      return () => clearTimeout(t);
+    }
+  }, [isRunning, triggerPipeline.isPending, showProgress]);
 
   // When pipeline transitions running→done and run ID changes, refresh data
   useEffect(() => {
@@ -40,6 +59,7 @@ export function NavBar() {
 
   const handleRefresh = () => {
     if (isRunning || triggerPipeline.isPending) return;
+    setShowProgress(true);
     triggerPipeline.mutate(undefined);
   };
 
@@ -78,12 +98,6 @@ export function NavBar() {
       </div>
 
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-        {isRunning && (
-          <span style={{ fontSize: 13, color: "var(--text-muted)", whiteSpace: "nowrap" }}>
-            Generating ideas…
-          </span>
-        )}
-
         <button onClick={toggle} style={{
           background: "transparent",
           border: "1px solid var(--border)",
@@ -108,34 +122,42 @@ export function NavBar() {
           )}
         </button>
 
-        <button onClick={handleRefresh} disabled={isRunning || triggerPipeline.isPending} style={{
-          background: "var(--accent)",
-          border: "none",
-          borderRadius: 8,
-          color: "white",
-          fontSize: 14,
-          fontWeight: 500,
-          padding: "8px 16px",
-          display: "flex",
-          alignItems: "center",
-          gap: 8,
-          opacity: (isRunning || triggerPipeline.isPending) ? 0.7 : 1,
-          cursor: (isRunning || triggerPipeline.isPending) ? "not-allowed" : "pointer",
-        }}>
-          {(isRunning || triggerPipeline.isPending) ? (
-            <>
-              <span style={{
-                width: 14, height: 14,
-                border: "2px solid white",
-                borderRightColor: "transparent",
-                borderRadius: "50%",
-                display: "inline-block",
-                animation: "spin 0.8s linear infinite",
-              }} />
-              Running…
-            </>
-          ) : "↻ Refresh Ideas"}
-        </button>
+        <div style={{ position: "relative" }}>
+          <button
+            onClick={handleRefresh}
+            disabled={isRunning || triggerPipeline.isPending}
+            style={{
+              background: "var(--accent)",
+              border: "none",
+              borderRadius: 8,
+              color: "white",
+              fontSize: 14,
+              fontWeight: 500,
+              padding: "8px 16px",
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              opacity: (isRunning || triggerPipeline.isPending) ? 0.7 : 1,
+              cursor: (isRunning || triggerPipeline.isPending) ? "not-allowed" : "pointer",
+            }}
+          >
+            {(isRunning || triggerPipeline.isPending) ? (
+              <>
+                <span style={{
+                  width: 14, height: 14,
+                  border: "2px solid white",
+                  borderRightColor: "transparent",
+                  borderRadius: "50%",
+                  display: "inline-block",
+                  animation: "spin 0.8s linear infinite",
+                }} />
+                Running…
+              </>
+            ) : "↻ Refresh Ideas"}
+          </button>
+
+          {showProgress && <PipelineProgress steps={steps} />}
+        </div>
       </div>
 
       <style>{`

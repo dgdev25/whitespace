@@ -7,6 +7,7 @@ from app.db.models.paper import Paper
 from app.db.models.chunk import Chunk
 from app.db.models.ingestion_run import IngestionRun
 from app.pipeline.chunking import chunk_text
+from worker import progress as prog
 from worker.stages.fetch import fetch_new_papers
 from worker.stages.fetch_blogs import fetch_blog_posts
 from worker.stages.fetch_semantic_scholar import fetch_semantic_scholar_papers
@@ -22,11 +23,6 @@ logger = logging.getLogger(__name__)
 
 
 def _abstracts_to_pseudo_analyses(papers: list[dict]) -> list[dict]:
-    """Build lightweight pseudo-analyses from raw paper metadata.
-
-    Skips per-paper LLM calls so re-synthesis runs complete in seconds
-    rather than minutes. gap_map + synthesise still use the LLM.
-    """
     return [
         {
             "arxiv_id": p.get("arxiv_id", ""),
@@ -44,6 +40,9 @@ def run_daily_pipeline(session: Session) -> None:
     today = date.today().isoformat()
     logger.info(f"Starting daily pipeline for {today}")
 
+    prog.start_run()
+    prog.emit("start", f"Pipeline started for {today}", "running")
+
     run = IngestionRun(run_date=today)
     session.add(run)
     session.commit()
@@ -55,19 +54,23 @@ def run_daily_pipeline(session: Session) -> None:
         orgs = [o.strip() for o in settings.arxiv_orgs.split(",")]
         categories = [c.strip() for c in settings.arxiv_categories.split(",")]
 
+        prog.emit("fetch_arxiv", "Fetching arXiv papers…", "running")
         raw_arxiv = fetch_new_papers(orgs=orgs, categories=categories, existing_ids=existing_ids)
+        prog.emit("fetch_arxiv", f"arXiv: {len(raw_arxiv)} new papers", "done")
         all_existing = existing_ids | {p["arxiv_id"] for p in raw_arxiv}
 
+        prog.emit("fetch_blogs", "Fetching blog posts (Anthropic, DeepMind, OpenAI, xAI)…", "running")
         raw_blogs = fetch_blog_posts(existing_ids=all_existing)
+        prog.emit("fetch_blogs", f"Blogs: {len(raw_blogs)} new posts", "done")
         all_existing |= {p["arxiv_id"] for p in raw_blogs}
 
+        prog.emit("fetch_s2", "Fetching Semantic Scholar papers…", "running")
         raw_s2 = fetch_semantic_scholar_papers(existing_ids=all_existing)
+        prog.emit("fetch_s2", f"Semantic Scholar: {len(raw_s2)} new papers", "done")
 
         raw_all = raw_arxiv + raw_blogs + raw_s2
-        logger.info(
-            "Fetched — arXiv: %d, blogs: %d, Semantic Scholar: %d",
-            len(raw_arxiv), len(raw_blogs), len(raw_s2),
-        )
+        logger.info("Fetched — arXiv: %d, blogs: %d, Semantic Scholar: %d",
+                    len(raw_arxiv), len(raw_blogs), len(raw_s2))
 
         if raw_all:
             # 2. Persist all new records
@@ -93,7 +96,7 @@ def run_daily_pipeline(session: Session) -> None:
             run.papers_fetched = len([p for p in paper_records if p[1].get("source", "arxiv") == "arxiv"])
             session.commit()
 
-            # 3. Chunk papers (arxiv + semantic scholar only — blogs are already plain text)
+            # 3. Chunk
             for paper, p in paper_records:
                 text_to_chunk = p.get("abstract", "")
                 if text_to_chunk:
@@ -118,17 +121,20 @@ def run_daily_pipeline(session: Session) -> None:
                 for p, _ in paper_records
             ]
 
-            # 4. Analyse all sources in parallel
+            prog.emit("analyse", f"Analysing {len(paper_dicts)} sources…", "running")
             analyses = analyse_papers(paper_dicts)
+            prog.emit("analyse", f"Analysed {len(analyses)} sources", "done")
 
         else:
-            # No new content — re-synthesise from existing pool (fast path)
+            prog.emit("fetch_arxiv", "No new content — re-synthesising from existing pool", "done")
             logger.info("No new content — re-synthesising from existing pool (fast path)")
             existing_papers = session.query(Paper).order_by(Paper.published_date.desc()).limit(50).all()
             if not existing_papers:
+                prog.emit("error", "No content in database yet", "error")
                 logger.info("No content in DB yet — skipping")
                 run.completed_at = datetime.now(timezone.utc)
                 session.commit()
+                prog.end_run()
                 return
 
             run.papers_fetched = 0
@@ -145,31 +151,52 @@ def run_daily_pipeline(session: Session) -> None:
                 for p in existing_papers
             ]
             analyses = _abstracts_to_pseudo_analyses(paper_dicts)
+            prog.emit("analyse", f"Built {len(analyses)} analyses from existing pool", "done")
 
-        # 5. Critical thinking pass — flags hype, tensions, credible signals
+        # 5. Critique
+        prog.emit("critique", "Applying critical thinking across all sources…", "running")
         critique = critique_analyses(analyses)
+        prog.emit("critique", "Critical review complete", "done")
 
-        # 6. Gap map (informed by critique) → Synthesise → Score
+        # 6. Gap map
+        prog.emit("gap_map", "Mapping research gaps…", "running")
         gaps = map_gaps(analyses, critique=critique)
-        ideas_raw = synthesise_ideas(gaps, n=settings.ideas_per_run)
-        ideas_scored = score_ideas(ideas_raw)
+        prog.emit("gap_map", "Gap map complete", "done")
 
-        # 7. Select top N, persist
+        # 7. Synthesise
+        prog.emit("synthesise", f"Synthesising {settings.ideas_per_run} ideas…", "running")
+        ideas_raw = synthesise_ideas(gaps, n=settings.ideas_per_run)
+        prog.emit("synthesise", f"{len(ideas_raw)} ideas synthesised", "done")
+
+        # 8. Score
+        prog.emit("score", "Scoring ideas…", "running")
+        ideas_scored = score_ideas(ideas_raw)
+        prog.emit("score", "Scoring complete", "done")
+
+        # 9. Select
+        prog.emit("select", f"Selecting top {settings.ideas_per_run} ideas…", "running")
         idea_records = select_and_persist(
             session, ideas_scored, n=settings.ideas_per_run, run_id=run.id
         )
+        prog.emit("select", f"{len(idea_records)} ideas saved", "done")
 
-        # 8. Compute connections
+        # 10. Connect
+        prog.emit("connect", "Computing connections between ideas…", "running")
         compute_connections(session, idea_records)
+        prog.emit("connect", "Connections mapped", "done")
 
         run.ideas_generated = len(idea_records)
         run.completed_at = datetime.now(timezone.utc)
         session.commit()
 
+        prog.emit("complete", f"Done — {len(idea_records)} new ideas ready", "done")
         logger.info(f"Pipeline complete — {len(idea_records)} ideas for {today}")
 
     except Exception as exc:
+        prog.emit("error", str(exc), "error")
         run.error = str(exc)
         run.completed_at = datetime.now(timezone.utc)
         session.commit()
         raise
+    finally:
+        prog.end_run()
