@@ -1,9 +1,15 @@
+from __future__ import annotations
+
 import uuid
+from typing import TYPE_CHECKING
 
 from sqlalchemy import JSON, Boolean, DateTime, Float, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
+
+if TYPE_CHECKING:
+    from app.db.models.connected_idea import ConnectedIdea
 
 
 class Idea(Base):
@@ -21,6 +27,6 @@ class Idea(Base):
     is_featured: Mapped[bool] = mapped_column(Boolean, default=False)
     paper_ids: Mapped[list] = mapped_column(JSON, default=list)
     created_at: Mapped[DateTime] = mapped_column(DateTime(timezone=True), server_default=func.now())
-    connections: Mapped[list["ConnectedIdea"]] = relationship(  # noqa: F821
+    connections: Mapped[list[ConnectedIdea]] = relationship(
         foreign_keys="ConnectedIdea.idea_id", back_populates="idea", cascade="all, delete-orphan"
     )

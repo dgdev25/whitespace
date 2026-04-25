@@ -1,9 +1,15 @@
+from __future__ import annotations
+
 import uuid
+from typing import TYPE_CHECKING
 
 from sqlalchemy import DateTime, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
+
+if TYPE_CHECKING:
+    from app.db.models.chunk import Chunk
 
 
 class Paper(Base):
@@ -18,6 +24,6 @@ class Paper(Base):
     published_date: Mapped[str] = mapped_column(String(32))
     url: Mapped[str] = mapped_column(Text, nullable=True)
     created_at: Mapped[DateTime] = mapped_column(DateTime(timezone=True), server_default=func.now())
-    chunks: Mapped[list["Chunk"]] = relationship(  # noqa: F821
+    chunks: Mapped[list[Chunk]] = relationship(
         back_populates="paper", cascade="all, delete-orphan"
     )
