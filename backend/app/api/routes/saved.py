@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -10,6 +11,10 @@ from app.schemas.ideas import IdeaSummary
 from app.schemas.saved import SavedIdeaOut
 
 router = APIRouter(prefix="/saved", tags=["saved"])
+
+
+class SaveRequest(BaseModel):
+    idea_id: str
 
 
 @router.get("/", response_model=list[SavedIdeaOut])
@@ -31,8 +36,9 @@ async def list_saved(session: AsyncSession = Depends(get_session)):
     ]
 
 
-@router.post("/{idea_id}", response_model=SavedIdeaOut, status_code=201)
-async def save_idea(idea_id: str, session: AsyncSession = Depends(get_session)):
+@router.post("/", response_model=SavedIdeaOut, status_code=201)
+async def save_idea(body: SaveRequest, session: AsyncSession = Depends(get_session)):
+    idea_id = body.idea_id
     idea = (await session.execute(select(Idea).where(Idea.id == idea_id))).scalars().first()
     if not idea:
         raise HTTPException(404, "Idea not found")
@@ -40,12 +46,7 @@ async def save_idea(idea_id: str, session: AsyncSession = Depends(get_session)):
         await session.execute(select(SavedIdea).where(SavedIdea.idea_id == idea_id))
     ).scalars().first()
     if existing:
-        return SavedIdeaOut(
-            id=existing.id,
-            idea=IdeaSummary.model_validate(idea, from_attributes=True),
-            saved_at=existing.saved_at,
-            has_build_output=False,
-        )
+        raise HTTPException(409, "Already saved")
     saved = SavedIdea(idea_id=idea_id)
     session.add(saved)
     await session.commit()
@@ -62,6 +63,7 @@ async def save_idea(idea_id: str, session: AsyncSession = Depends(get_session)):
 async def unsave_idea(idea_id: str, session: AsyncSession = Depends(get_session)):
     result = await session.execute(select(SavedIdea).where(SavedIdea.idea_id == idea_id))
     saved = result.scalars().first()
-    if saved:
-        await session.delete(saved)
-        await session.commit()
+    if saved is None:
+        raise HTTPException(404, "Not saved")
+    await session.delete(saved)
+    await session.commit()

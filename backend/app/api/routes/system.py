@@ -15,8 +15,10 @@ async def health(session: AsyncSession = Depends(get_session)):
         db_status = "ok"
     except Exception:
         db_status = "error"
-    result = await session.execute(
-        text("SELECT run_date FROM ingestion_runs ORDER BY started_at DESC LIMIT 1")
-    )
-    row = result.fetchone()
+    row = None
+    if db_status == "ok":
+        result = await session.execute(
+            text("SELECT run_date FROM ingestion_runs ORDER BY started_at DESC LIMIT 1")
+        )
+        row = result.fetchone()
     return HealthOut(status="ok", database=db_status, last_ingestion_run=row[0] if row else None)

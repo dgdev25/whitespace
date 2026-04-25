@@ -36,7 +36,7 @@ async def today_feed(session: AsyncSession = Depends(get_session)):
 
 @router.get("/surprise", response_model=IdeaSummary)
 async def surprise(session: AsyncSession = Depends(get_session)):
-    result = await session.execute(select(Idea))
+    result = await session.execute(select(Idea).where(Idea.is_featured == True))  # noqa: E712
     ideas = result.scalars().all()
     if not ideas:
         raise HTTPException(404, "No ideas available yet")
