@@ -10,7 +10,7 @@ class ClaudeCLIRunner(LLMRunner):
     def is_available(self) -> bool:
         return shutil.which("claude") is not None
 
-    def run(self, prompt: str, system: str, stream: bool = False) -> str:
+    def run(self, prompt: str, system: str = "", stream: bool = False) -> str:
         full_prompt = f"{system}\n\n{prompt}" if system else prompt
         proc = subprocess.run(
             ["claude", "-p", "--output-format", "text"],

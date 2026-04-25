@@ -1,8 +1,11 @@
 import os
+import time
 
 import requests
 
 from app.runners.base import LLMRunner
+
+_RETRIES = 2
 
 
 class AnthropicRunner(LLMRunner):
@@ -15,17 +18,23 @@ class AnthropicRunner(LLMRunner):
         api_key = os.getenv("ANTHROPIC_API_KEY")
         if not api_key:
             raise RuntimeError("ANTHROPIC_API_KEY missing")
-        resp = requests.post(
-            "https://api.anthropic.com/v1/messages",
-            headers={"x-api-key": api_key, "anthropic-version": "2023-06-01"},
-            json={
-                "model": os.getenv("ANTHROPIC_ANALYSIS_MODEL", "claude-haiku-4-5-20251001"),
-                "max_tokens": 4096,
-                "system": system,
-                "messages": [{"role": "user", "content": prompt}],
-            },
-            timeout=60,
-        )
-        resp.raise_for_status()
+        payload = {
+            "model": os.getenv("ANTHROPIC_ANALYSIS_MODEL", "claude-haiku-4-5-20251001"),
+            "max_tokens": 4096,
+            "system": system,
+            "messages": [{"role": "user", "content": prompt}],
+        }
+        for attempt in range(_RETRIES + 1):
+            resp = requests.post(
+                "https://api.anthropic.com/v1/messages",
+                headers={"x-api-key": api_key, "anthropic-version": "2023-06-01"},
+                json=payload,
+                timeout=60,
+            )
+            if resp.status_code == 429 and attempt < _RETRIES:
+                time.sleep(2 ** attempt)
+                continue
+            resp.raise_for_status()
+            break
         data = resp.json()
         return data["content"][0]["text"]

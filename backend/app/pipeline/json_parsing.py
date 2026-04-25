@@ -94,7 +94,7 @@ def parse_llm_json(response_text: str) -> Any:
 def run_and_parse_json(
     runner: LLMRunner,
     prompt: str,
-    system: str,
+    system: str = "",
     *,
     retries: int = 1,
 ) -> dict[str, Any]:
@@ -108,7 +108,7 @@ def run_and_parse_json(
                 + "No markdown fences, no prose, no commentary."
             )
         try:
-            response = runner.run(prompt=adjusted_prompt, system=system, stream=False)
+            response = runner.run(prompt=adjusted_prompt, system=system or "", stream=False)
             return parse_llm_json(response)
         except LLMJSONParseError as exc:
             last_error = exc

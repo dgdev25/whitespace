@@ -28,7 +28,7 @@ class IdeaDetail(IdeaSummary):
     why_novel: str
     who_builds: str
     who_buys: str
-    connections: list[ConnectedIdeaOut]
+    connections: list[ConnectedIdeaOut] = []
     created_at: datetime
 
 
