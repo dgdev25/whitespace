@@ -1,4 +1,5 @@
 import os
+from urllib.parse import quote
 
 import requests
 
@@ -11,11 +12,11 @@ class GeminiRunner(LLMRunner):
     def is_available(self) -> bool:
         return bool(os.getenv("GEMINI_API_KEY"))
 
-    def run(self, prompt: str, system: str, stream: bool = False) -> str:
+    def run(self, prompt: str, system: str = "", stream: bool = False) -> str:
         api_key = os.getenv("GEMINI_API_KEY")
         if not api_key:
             raise RuntimeError("GEMINI_API_KEY missing")
-        model = os.getenv("GEMINI_MODEL", "gemini-2.0-flash")
+        model = quote(os.getenv("GEMINI_MODEL", "gemini-2.0-flash"), safe="")
         resp = requests.post(
             f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent",
             params={"key": api_key},

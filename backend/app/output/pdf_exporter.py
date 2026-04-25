@@ -1,7 +1,10 @@
+import html as html_module
 import logging
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
+
+e = html_module.escape
 
 
 def _render_html(payload: dict) -> str:
@@ -20,10 +23,10 @@ def _render_html(payload: dict) -> str:
     content = [
         "<h1>Whitespace Research Synthesis Report</h1>",
         "<div class='meta'>",
-        f"<div>Project: {project.get('name') or 'Unknown'}</div>",
-        f"<div>Session ID: {session.get('id')}</div>",
-        f"<div>Status: {session.get('status')}</div>",
-        f"<div>Runner: {session.get('runner_used') or 'Unknown'}</div>",
+        f"<div>Project: {e(str(project.get('name') or 'Unknown'))}</div>",
+        f"<div>Session ID: {e(str(session.get('id') or ''))}</div>",
+        f"<div>Status: {e(str(session.get('status') or ''))}</div>",
+        f"<div>Runner: {e(str(session.get('runner_used') or 'Unknown'))}</div>",
         "</div>",
     ]
 
@@ -31,28 +34,29 @@ def _render_html(payload: dict) -> str:
         content.append("<div class='section'><h2>Industries</h2>")
         for industry in industries:
             content.append(
-                f"<div class='card'><strong>{industry.get('name')}</strong><br />"
-                f"{industry.get('description')}</div>"
+                f"<div class='card'><strong>{e(str(industry.get('name') or ''))}</strong><br />"
+                f"{e(str(industry.get('description') or ''))}</div>"
             )
         content.append("</div>")
 
     if papers:
         content.append("<div class='section'><h2>Papers</h2><ul>")
         for paper in papers:
-            title = paper.get("title") or "Untitled"
-            content.append(f"<li>{title} ({paper.get('source_type')})</li>")
+            title = e(str(paper.get("title") or "Untitled"))
+            source = e(str(paper.get("source_type") or ""))
+            content.append(f"<li>{title} ({source})</li>")
         content.append("</ul></div>")
 
     if analyses:
         content.append("<div class='section'><h2>Paper Analyses</h2>")
         for analysis in analyses:
-            content.append(f"<h3>Paper {analysis.get('paper_id')}</h3>")
+            content.append(f"<h3>Paper {e(str(analysis.get('paper_id') or ''))}</h3>")
             if analysis.get("summary"):
-                content.append(f"<p>{analysis['summary']}</p>")
+                content.append(f"<p>{e(str(analysis['summary']))}</p>")
             if analysis.get("key_claims"):
                 content.append("<strong>Key Claims</strong><ul>")
                 for claim in analysis["key_claims"]:
-                    content.append(f"<li>{claim}</li>")
+                    content.append(f"<li>{e(str(claim))}</li>")
                 content.append("</ul>")
         content.append("</div>")
 
@@ -60,17 +64,17 @@ def _render_html(payload: dict) -> str:
     if gaps.get("gaps"):
         content.append("<strong>Gaps</strong><ul>")
         for gap in gaps["gaps"]:
-            content.append(f"<li>{gap}</li>")
+            content.append(f"<li>{e(str(gap))}</li>")
         content.append("</ul>")
     if gaps.get("contradictions"):
         content.append("<strong>Contradictions</strong><ul>")
         for contradiction in gaps["contradictions"]:
-            content.append(f"<li>{contradiction}</li>")
+            content.append(f"<li>{e(str(contradiction))}</li>")
         content.append("</ul>")
     if gaps.get("recurring_themes"):
         content.append("<strong>Recurring Themes</strong><ul>")
         for theme in gaps["recurring_themes"]:
-            content.append(f"<li>{theme}</li>")
+            content.append(f"<li>{e(str(theme))}</li>")
         content.append("</ul>")
     content.append("</div>")
 
@@ -78,20 +82,20 @@ def _render_html(payload: dict) -> str:
         content.append("<div class='section'><h2>Synthesized Ideas</h2>")
         for idea in ideas:
             content.append("<div class='card'>")
-            content.append(f"<h3>{idea.get('title')}</h3>")
+            content.append(f"<h3>{e(str(idea.get('title') or ''))}</h3>")
             if idea.get("description"):
-                content.append(f"<p>{idea['description']}</p>")
+                content.append(f"<p>{e(str(idea['description']))}</p>")
             content.append(
-                f"<div>Scores: Novelty {idea.get('novelty_score')} · "
-                f"Feasibility {idea.get('feasibility_score')}</div>"
+                f"<div>Scores: Novelty {e(str(idea.get('novelty_score', '')))} · "
+                f"Feasibility {e(str(idea.get('feasibility_score', '')))}</div>"
             )
             if idea.get("industry_assessments"):
                 content.append("<strong>Industry Assessments</strong><ul>")
                 for assessment in idea["industry_assessments"]:
                     content.append(
-                        f"<li>{assessment.get('industry_name')}: "
-                        f"{assessment.get('applicability_score')} — "
-                        f"{assessment.get('applicability_description')}</li>"
+                        f"<li>{e(str(assessment.get('industry_name') or ''))}: "
+                        f"{e(str(assessment.get('applicability_score') or ''))} — "
+                        f"{e(str(assessment.get('applicability_description') or ''))}</li>"
                     )
                 content.append("</ul>")
             content.append("</div>")

@@ -12,14 +12,18 @@ _SKETCH_PROMPT = (Path(__file__).parent / "prompts" / "product_sketch.md").read_
 _PLAN_PROMPT = (Path(__file__).parent / "prompts" / "technical_plan.md").read_text()
 
 
+def _sanitize(value: str) -> str:
+    return value.replace("{{", "{ {").replace("}}", "} }")
+
+
 def _fill(template: str, idea: Idea) -> str:
     return (template
-        .replace("{{title}}", idea.title)
-        .replace("{{description}}", idea.description)
-        .replace("{{why_novel}}", idea.why_novel)
-        .replace("{{who_builds}}", idea.who_builds)
-        .replace("{{who_buys}}", idea.who_buys)
-        .replace("{{paper_ids}}", ", ".join(idea.paper_ids)))
+        .replace("{{title}}", _sanitize(idea.title))
+        .replace("{{description}}", _sanitize(idea.description))
+        .replace("{{why_novel}}", _sanitize(idea.why_novel))
+        .replace("{{who_builds}}", _sanitize(idea.who_builds))
+        .replace("{{who_buys}}", _sanitize(idea.who_buys))
+        .replace("{{paper_ids}}", ", ".join(_sanitize(p) for p in idea.paper_ids)))
 
 
 def generate_product_sketch(idea: Idea, runner) -> dict:

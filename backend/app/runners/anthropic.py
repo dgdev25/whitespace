@@ -11,7 +11,7 @@ class AnthropicRunner(LLMRunner):
     def is_available(self) -> bool:
         return bool(os.getenv("ANTHROPIC_API_KEY"))
 
-    def run(self, prompt: str, system: str, stream: bool = False) -> str:
+    def run(self, prompt: str, system: str = "", stream: bool = False) -> str:
         api_key = os.getenv("ANTHROPIC_API_KEY")
         if not api_key:
             raise RuntimeError("ANTHROPIC_API_KEY missing")
@@ -20,7 +20,7 @@ class AnthropicRunner(LLMRunner):
             headers={"x-api-key": api_key, "anthropic-version": "2023-06-01"},
             json={
                 "model": os.getenv("ANTHROPIC_ANALYSIS_MODEL", "claude-haiku-4-5-20251001"),
-                "max_tokens": 1024,
+                "max_tokens": 4096,
                 "system": system,
                 "messages": [{"role": "user", "content": prompt}],
             },

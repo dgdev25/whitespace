@@ -83,11 +83,12 @@ async def export_md(
     if not idea:
         raise HTTPException(status_code=404, detail="Idea not found")
 
+    safe_id = "".join(c for c in idea_id if c.isalnum() or c == "-")
     content = _build_markdown(idea, build)
     return Response(
         content=content,
         media_type="text/markdown",
-        headers={"Content-Disposition": f'attachment; filename="{idea_id}.md"'},
+        headers={"Content-Disposition": f'attachment; filename="{safe_id}.md"'},
     )
 
 
@@ -155,6 +156,7 @@ async def export_pdf_route(
 </body>
 </html>"""
 
+    safe_id = "".join(c for c in idea_id if c.isalnum() or c == "-")
     buffer = io.BytesIO()
     HTML(string=html_content).write_pdf(buffer)
     pdf_bytes = buffer.getvalue()
@@ -162,5 +164,5 @@ async def export_pdf_route(
     return Response(
         content=pdf_bytes,
         media_type="application/pdf",
-        headers={"Content-Disposition": f'attachment; filename="{idea_id}.pdf"'},
+        headers={"Content-Disposition": f'attachment; filename="{safe_id}.pdf"'},
     )

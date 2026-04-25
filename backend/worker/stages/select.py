@@ -31,11 +31,11 @@ def select_and_persist(
     for i, idea_data in enumerate(top):
         paper_ids = idea_data.get("paper_refs", [])
         record = Idea(
-            title=idea_data["title"],
-            description=idea_data["description"],
-            why_novel=idea_data["why_novel"],
-            who_builds=idea_data["who_builds"],
-            who_buys=idea_data["who_buys"],
+            title=idea_data.get("title", "Untitled"),
+            description=idea_data.get("description", ""),
+            why_novel=idea_data.get("why_novel", ""),
+            who_builds=idea_data.get("who_builds", ""),
+            who_buys=idea_data.get("who_buys", ""),
             novelty_score=float(idea_data.get("novelty_score", 0.5)),
             feasibility_score=float(idea_data.get("feasibility_score", 0.5)),
             badge=_badge(

@@ -1,18 +1,32 @@
 import feedparser
 import re
 import logging
+import requests
 
 logger = logging.getLogger(__name__)
+
+_CATEGORY_RE = re.compile(r"^[a-zA-Z0-9]+(\.[a-zA-Z0-9]+)*$")
+
 
 def _extract_arxiv_id(url: str) -> str:
     match = re.search(r"arxiv\.org/abs/([^v]+)", url)
     return match.group(1) if match else url
 
+
 def fetch_new_papers(categories: list[str], existing_ids: set[str], max_results: int = 50) -> list[dict]:
     papers = []
     for cat in categories:
+        if not _CATEGORY_RE.match(cat):
+            logger.warning("Skipping invalid arXiv category: %r", cat)
+            continue
         url = f"http://export.arxiv.org/api/query?search_query=cat:{cat}&sortBy=submittedDate&sortOrder=descending&max_results={max_results}"
-        feed = feedparser.parse(url)
+        try:
+            resp = requests.get(url, timeout=30)
+            resp.raise_for_status()
+            feed = feedparser.parse(resp.text)
+        except requests.RequestException as exc:
+            logger.warning("arXiv fetch failed for category %r: %s", cat, exc)
+            continue
         for entry in feed.entries:
             arxiv_id = _extract_arxiv_id(entry.id)
             if arxiv_id in existing_ids:

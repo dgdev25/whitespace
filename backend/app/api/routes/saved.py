@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_session
@@ -49,8 +50,12 @@ async def save_idea(body: SaveRequest, session: AsyncSession = Depends(get_sessi
         raise HTTPException(409, "Already saved")
     saved = SavedIdea(idea_id=idea_id)
     session.add(saved)
-    await session.commit()
-    await session.refresh(saved)
+    try:
+        await session.commit()
+        await session.refresh(saved)
+    except IntegrityError:
+        await session.rollback()
+        raise HTTPException(409, "Already saved")
     return SavedIdeaOut(
         id=saved.id,
         idea=IdeaSummary.model_validate(idea, from_attributes=True),
