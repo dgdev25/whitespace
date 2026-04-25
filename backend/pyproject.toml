@@ -24,6 +24,7 @@ dependencies = [
     "feedparser>=6.0",
     "weasyprint>=60",
     "onnxruntime>=1.18",
+    "sse-starlette>=2.1",
 ]
 
 [project.optional-dependencies]

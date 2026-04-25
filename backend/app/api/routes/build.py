@@ -6,8 +6,15 @@ from app.api.deps import get_session
 from app.db.models.build_output import BuildOutput
 from app.db.models.idea import Idea
 from app.schemas.build import BuildOutputOut
+from worker.build_generator import run_build
+from worker.db import SessionLocal
 
 router = APIRouter(prefix="/build", tags=["build"])
+
+
+def _background_build(build_id: str, idea_id: str):
+    with SessionLocal() as session:
+        run_build(session, build_id, idea_id)
 
 
 @router.get("/{idea_id}", response_model=BuildOutputOut)
@@ -21,9 +28,7 @@ async def get_build(idea_id: str, session: AsyncSession = Depends(get_session)):
 
 @router.post("/{idea_id}", response_model=BuildOutputOut, status_code=202)
 async def trigger_build(
-    idea_id: str,
-    background_tasks: BackgroundTasks,
-    session: AsyncSession = Depends(get_session),
+    idea_id: str, background_tasks: BackgroundTasks, session: AsyncSession = Depends(get_session)
 ):
     idea = (await session.execute(select(Idea).where(Idea.id == idea_id))).scalars().first()
     if not idea:
@@ -37,5 +42,5 @@ async def trigger_build(
     session.add(build)
     await session.commit()
     await session.refresh(build)
-    # Build generator wired in Plan 3
+    background_tasks.add_task(_background_build, build.id, idea_id)
     return BuildOutputOut.model_validate(build, from_attributes=True)
