@@ -10,7 +10,9 @@ depends_on = None
 
 
 def upgrade():
-    op.execute("CREATE EXTENSION IF NOT EXISTS ruvector")
+    bind = op.get_bind()
+    if bind.dialect.name == "postgresql":
+        op.execute("CREATE EXTENSION IF NOT EXISTS ruvector")
     op.create_table(
         "papers",
         sa.Column("id", sa.String(), primary_key=True),
