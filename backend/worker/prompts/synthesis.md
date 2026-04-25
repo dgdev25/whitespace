@@ -18,6 +18,7 @@ For each idea, provide:
 6. paper_refs: list of paper titles or arXiv IDs from the provided gaps that ground this idea
 
 Return a JSON array of exactly {{n}} objects with these keys and no others.
+IMPORTANT: Respond ONLY with a raw JSON array. Do not include markdown code fences, explanations, or any text outside the JSON array.
 
 Engineering gaps and pain points:
 {{gaps}}

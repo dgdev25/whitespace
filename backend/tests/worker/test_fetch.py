@@ -46,6 +46,7 @@ def test_fetch_returns_new_papers():
     assert len(papers) == 1
     assert papers[0]["arxiv_id"] == "2601.99999"
     assert papers[0]["title"] == "New Paper"
+    assert papers[0]["published_date"] == "2026-01-01"
 
 
 def test_fetch_builds_org_category_query():

@@ -70,7 +70,7 @@ def fetch_new_papers(
             "categories": ", ".join(
                 t.term for t in getattr(entry, "tags", [])
             ),
-            "published_date": entry.get("published", "")[:10],
+            "published_date": (getattr(entry, "published", "") or "")[:10],
             "url": f"https://arxiv.org/abs/{arxiv_id}",
         })
 
