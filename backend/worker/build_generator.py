@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.orm.attributes import flag_modified
 from app.db.models.build_output import BuildOutput
 from app.db.models.idea import Idea
+from app.db.models.paper import Paper
 from app.pipeline.json_parsing import parse_json_response
 from app.runners.selector import _default_runners, select_runner_or_raise
 
@@ -26,14 +27,14 @@ def _strip_preamble(text: str) -> str:
     return text.strip()
 
 
-def _fill(template: str, idea: Idea) -> str:
+def _fill(template: str, idea: Idea, paper_refs: str = "") -> str:
     return (template
         .replace("{{title}}", _sanitize(idea.title))
         .replace("{{description}}", _sanitize(idea.description))
         .replace("{{why_novel}}", _sanitize(idea.why_novel))
         .replace("{{who_builds}}", _sanitize(idea.who_builds))
         .replace("{{who_buys}}", _sanitize(idea.who_buys))
-        .replace("{{paper_ids}}", ", ".join(_sanitize(p) for p in idea.paper_ids)))
+        .replace("{{paper_ids}}", paper_refs or ", ".join(_sanitize(p) for p in idea.paper_ids)))
 
 
 def generate_product_sketch(idea: Idea, runner) -> dict:
@@ -42,14 +43,27 @@ def generate_product_sketch(idea: Idea, runner) -> dict:
     return parse_json_response(response, expected_type=dict)
 
 
-def generate_technical_plan(idea: Idea, runner) -> str:
-    prompt = _fill(_PLAN_PROMPT, idea)
+def generate_technical_plan(idea: Idea, runner, paper_refs: str = "") -> str:
+    prompt = _fill(_PLAN_PROMPT, idea, paper_refs)
     return _strip_preamble(runner.run(prompt))
 
 
-def generate_prd(idea: Idea, runner) -> str:
-    prompt = _fill(_PRD_PROMPT, idea)
+def generate_prd(idea: Idea, runner, paper_refs: str = "") -> str:
+    prompt = _fill(_PRD_PROMPT, idea, paper_refs)
     return _strip_preamble(runner.run(prompt))
+
+
+def _build_paper_refs(session: Session, paper_ids: list[str]) -> str:
+    """Return a readable source list with titles and URLs for the LLM to reference."""
+    if not paper_ids:
+        return ""
+    papers = session.query(Paper).filter(Paper.arxiv_id.in_(paper_ids)).all()
+    url_map = {p.arxiv_id: p.url for p in papers}
+    parts = []
+    for pid in paper_ids:
+        url = url_map.get(pid, "")
+        parts.append(f"{pid} — {url}" if url else pid)
+    return "; ".join(parts)
 
 
 def run_build(session: Session, build_id: str, idea_id: str) -> None:
@@ -60,16 +74,17 @@ def run_build(session: Session, build_id: str, idea_id: str) -> None:
         return
 
     runner = select_runner_or_raise(_default_runners())
+    paper_refs = _build_paper_refs(session, idea.paper_ids)
 
     try:
         build.product_sketch = generate_product_sketch(idea, runner)
         flag_modified(build, "product_sketch")
         session.commit()
 
-        build.technical_plan = generate_technical_plan(idea, runner)
+        build.technical_plan = generate_technical_plan(idea, runner, paper_refs)
         session.commit()
 
-        build.prd = generate_prd(idea, runner)
+        build.prd = generate_prd(idea, runner, paper_refs)
         build.status = "ready"
         session.commit()
         logger.info(f"Build {build_id} complete")

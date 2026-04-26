@@ -59,26 +59,36 @@ export function IdeaDetailPage() {
           </Section>
 
           <Section label={`Research Basis — ${idea.paper_ids.length} Paper${idea.paper_ids.length !== 1 ? "s" : ""}`}>
-            {idea.paper_ids.map(pid => (
-              <a
-                key={pid}
-                href={`https://arxiv.org/abs/${pid}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{
-                  display: "flex", alignItems: "flex-start", gap: 14,
-                  background: "var(--surface)", border: "1px solid var(--border)",
-                  borderRadius: 8, padding: "12px 16px", marginBottom: 8,
-                  fontSize: 14, color: "var(--text-secondary)",
-                  textDecoration: "none",
-                }}
-                onMouseEnter={e => (e.currentTarget.style.borderColor = "var(--accent)")}
-                onMouseLeave={e => (e.currentTarget.style.borderColor = "var(--border)")}
-              >
-                <span style={{ color: "var(--accent)", flexShrink: 0 }}>↗</span>
-                <span>{pid}</span>
-              </a>
-            ))}
+            {idea.paper_ids.map(pid => {
+              const isGithub = pid.startsWith("github:");
+              const slug = isGithub ? pid.slice(7) : pid;
+              const href = isGithub
+                ? `https://github.com/${slug}`
+                : `https://arxiv.org/abs/${pid}`;
+              const label = isGithub ? slug : pid;
+              const badge = isGithub ? "GitHub" : "arXiv";
+              return (
+                <a
+                  key={pid}
+                  href={href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{
+                    display: "flex", alignItems: "flex-start", gap: 14,
+                    background: "var(--surface)", border: "1px solid var(--border)",
+                    borderRadius: 8, padding: "12px 16px", marginBottom: 8,
+                    fontSize: 14, color: "var(--text-secondary)",
+                    textDecoration: "none",
+                  }}
+                  onMouseEnter={e => (e.currentTarget.style.borderColor = "var(--accent)")}
+                  onMouseLeave={e => (e.currentTarget.style.borderColor = "var(--border)")}
+                >
+                  <span style={{ color: "var(--accent)", flexShrink: 0 }}>↗</span>
+                  <span style={{ flex: 1 }}>{label}</span>
+                  <span style={{ fontSize: 11, fontWeight: 600, color: "var(--text-muted)", flexShrink: 0, alignSelf: "center" }}>{badge}</span>
+                </a>
+              );
+            })}
           </Section>
         </div>
 
