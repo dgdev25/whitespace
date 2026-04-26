@@ -92,6 +92,7 @@ export interface SystemConfig {
   arxiv_categories: string[];
   active_orgs: string[];
   active_categories: string[];
+  github_repos: string[];
 }
 
 export interface PipelineRunResponse {

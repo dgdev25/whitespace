@@ -20,7 +20,7 @@ def fetch_new_papers(
     orgs: list[str],
     categories: list[str],
     existing_ids: set[str],
-    max_results: int = 50,
+    max_results: int = 200,
 ) -> list[dict]:
     valid_orgs = [o for o in orgs if _ORG_RE.match(o)]
     invalid_orgs = set(orgs) - set(valid_orgs)
@@ -57,8 +57,9 @@ def fetch_new_papers(
 
     papers = []
     for entry in feed.entries:
-        arxiv_id = _extract_arxiv_id(entry.id)
-        if arxiv_id in existing_ids:
+        raw_id: str = str(entry.get("id") or "")
+        arxiv_id = _extract_arxiv_id(raw_id)
+        if not arxiv_id or arxiv_id in existing_ids:
             continue
         papers.append({
             "arxiv_id": arxiv_id,

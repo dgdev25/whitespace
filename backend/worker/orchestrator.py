@@ -10,6 +10,7 @@ from app.pipeline.chunking import chunk_text
 from worker import progress as prog
 from worker.stages.fetch import fetch_new_papers
 from worker.stages.fetch_blogs import fetch_blog_posts
+from worker.stages.fetch_github import fetch_github_repos
 from worker.stages.fetch_semantic_scholar import fetch_semantic_scholar_papers
 from worker.stages.analyse import analyse_papers
 from worker.stages.critique import critique_analyses
@@ -41,6 +42,9 @@ def run_daily_pipeline(
     max_sources: int | None = None,
     cached_analyses: int | None = None,
     ideas_per_run: int | None = None,
+    orgs: list[str] | None = None,
+    categories: list[str] | None = None,
+    github_repos: list[str] | None = None,
 ) -> None:
     max_new = max_sources if max_sources is not None else settings.max_sources_per_run
     cached_limit = cached_analyses if cached_analyses is not None else settings.cached_analyses_count
@@ -60,11 +64,11 @@ def run_daily_pipeline(
     try:
         # 1. Fetch from all sources
         existing_ids = {r[0] for r in session.execute(text("SELECT arxiv_id FROM papers")).all()}
-        orgs = [o.strip() for o in settings.arxiv_orgs.split(",")]
-        categories = [c.strip() for c in settings.arxiv_categories.split(",")]
+        _orgs = orgs if orgs else [o.strip() for o in settings.arxiv_orgs.split(",")]
+        _cats = categories if categories else [c.strip() for c in settings.arxiv_categories.split(",")]
 
-        prog.emit("fetch_arxiv", "Fetching arXiv papers…", "running")
-        raw_arxiv = fetch_new_papers(orgs=orgs, categories=categories, existing_ids=existing_ids)
+        prog.emit("fetch_arxiv", f"Fetching arXiv papers ({', '.join(_orgs)})…", "running")
+        raw_arxiv = fetch_new_papers(orgs=_orgs, categories=_cats, existing_ids=existing_ids)
         prog.emit("fetch_arxiv", f"arXiv: {len(raw_arxiv)} new papers", "done")
         all_existing = existing_ids | {p["arxiv_id"] for p in raw_arxiv}
 
@@ -76,10 +80,18 @@ def run_daily_pipeline(
         prog.emit("fetch_s2", "Fetching Semantic Scholar papers…", "running")
         raw_s2 = fetch_semantic_scholar_papers(existing_ids=all_existing)
         prog.emit("fetch_s2", f"Semantic Scholar: {len(raw_s2)} new papers", "done")
+        all_existing |= {p["arxiv_id"] for p in raw_s2}
 
-        raw_all = raw_arxiv + raw_blogs + raw_s2
-        logger.info("Fetched — arXiv: %d, blogs: %d, Semantic Scholar: %d",
-                    len(raw_arxiv), len(raw_blogs), len(raw_s2))
+        _repos = github_repos if github_repos is not None else []
+        raw_github: list[dict] = []
+        if _repos:
+            prog.emit("fetch_github", f"Fetching {len(_repos)} GitHub repo(s)…", "running")
+            raw_github = fetch_github_repos(repos=_repos, existing_ids=all_existing)
+            prog.emit("fetch_github", f"GitHub: {len(raw_github)} new repo(s)", "done")
+
+        raw_all = raw_arxiv + raw_blogs + raw_s2 + raw_github
+        logger.info("Fetched — arXiv: %d, blogs: %d, Semantic Scholar: %d, GitHub: %d",
+                    len(raw_arxiv), len(raw_blogs), len(raw_s2), len(raw_github))
 
         if raw_all:
             # 2. Persist all new records (capped per run)
@@ -150,8 +162,8 @@ def run_daily_pipeline(
                 .limit(cached_limit)
                 .all()
             )
-            cached_analyses_list = [p.analysis for p in cached_papers if p.analysis]
-            analyses = new_analyses + cached_analyses_list
+            cached_analyses_list: list[dict] = [p.analysis for p in cached_papers if p.analysis is not None]
+            analyses: list[dict] = new_analyses + cached_analyses_list
             prog.emit("analyse", f"Analysed {len(new_analyses)} new + {len(cached_analyses_list)} cached", "done")
 
         else:
@@ -173,7 +185,7 @@ def run_daily_pipeline(
             cached = [p for p in existing_papers if p.analysis]
             uncached = [p for p in existing_papers if not p.analysis]
 
-            analyses = [p.analysis for p in cached]
+            analyses: list[dict] = [a for p in cached if (a := p.analysis) is not None]
             if uncached:
                 pseudo_dicts = [
                     {"title": p.title, "abstract": p.abstract, "full_text": p.full_text,

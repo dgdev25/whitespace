@@ -19,6 +19,7 @@ async def lifespan(app: FastAPI):
                 max_sources_per_run=settings.max_sources_per_run,
                 cached_analyses_count=settings.cached_analyses_count,
                 runner_model_prefs={},
+                github_repos=[],
             )
             session.add(existing)
             await session.commit()

@@ -43,6 +43,14 @@ export const useSetRunnerModel = () => {
   });
 };
 
+export const useSetGithubRepos = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (repos: string[]) => api.setGithubRepos(repos),
+    onSuccess: (data) => qc.setQueryData(["config"], data),
+  });
+};
+
 export const useSetPipelineConfig = () => {
   const qc = useQueryClient();
   return useMutation({

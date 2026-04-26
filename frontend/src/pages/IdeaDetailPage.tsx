@@ -24,7 +24,7 @@ export function IdeaDetailPage() {
       <div style={{ display: "grid", gridTemplateColumns: "1fr 280px", gap: 48, alignItems: "start", padding: "48px 0 80px" }}>
         {/* Main content */}
         <div>
-          <button onClick={() => navigate(-1)} style={{ background: "none", border: "none", fontSize: 14, fontWeight: 500, color: "var(--text-secondary)", padding: 0, marginBottom: 24, cursor: "pointer" }}>
+          <button onClick={() => navigate("/")} style={{ background: "none", border: "none", fontSize: 14, fontWeight: 500, color: "var(--text-secondary)", padding: 0, marginBottom: 24, cursor: "pointer" }}>
             ← Back to Ideas
           </button>
           <div style={{ marginBottom: 12 }}><BadgeRow badges={[idea.badge]} /></div>

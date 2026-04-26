@@ -32,11 +32,16 @@ class SystemConfigOut(BaseModel):
     arxiv_categories: list[str]  # full pool from .env
     active_orgs: list[str]       # user-selected subset
     active_categories: list[str] # user-selected subset
+    github_repos: list[str]
 
 
 class DataSourcesIn(BaseModel):
     orgs: list[str]
     categories: list[str]
+
+
+class GitHubReposIn(BaseModel):
+    repos: list[str]
 
 
 class PipelineRunOut(BaseModel):

@@ -13,7 +13,7 @@ from app.api.deps import get_session
 from app.core.config import settings
 from app.db.models.user_settings import UserSettings
 from app.runners.selector import set_model_prefs
-from app.schemas.system import DataSourcesIn, HealthOut, PipelineConfigIn, PipelineRunOut, PipelineStatusOut, RunnerModelIn, RunnerOut, RunnerPreferenceIn, RunnersOut, ScheduleConfigIn, ScheduleStatusOut, SystemConfigOut
+from app.schemas.system import DataSourcesIn, GitHubReposIn, HealthOut, PipelineConfigIn, PipelineRunOut, PipelineStatusOut, RunnerModelIn, RunnerOut, RunnerPreferenceIn, RunnersOut, ScheduleConfigIn, ScheduleStatusOut, SystemConfigOut
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/system", tags=["system"])
@@ -44,7 +44,16 @@ def _run_pipeline_sync():
         cached = user_cfg.cached_analyses_count if user_cfg else settings.cached_analyses_count
         ideas = user_cfg.ideas_per_run if user_cfg else settings.ideas_per_run
         set_model_prefs(user_cfg.runner_model_prefs if user_cfg else {})
-        run_daily_pipeline(s, max_sources=max_src, cached_analyses=cached, ideas_per_run=ideas)
+        github_repos = list(user_cfg.github_repos or []) if user_cfg else []
+        run_daily_pipeline(
+            s,
+            max_sources=max_src,
+            cached_analyses=cached,
+            ideas_per_run=ideas,
+            orgs=_active_orgs,
+            categories=_active_categories,
+            github_repos=github_repos,
+        )
 
 
 @router.get("/health", response_model=HealthOut)
@@ -262,6 +271,7 @@ async def _build_config_out(session: AsyncSession, all_orgs: list[str], all_cats
         arxiv_categories=all_cats,
         active_orgs=_active_orgs if _active_orgs is not None else all_orgs,
         active_categories=_active_categories if _active_categories is not None else all_cats,
+        github_repos=list(user_cfg.github_repos or []),
     )
 
 
@@ -291,4 +301,17 @@ async def set_data_sources(body: DataSourcesIn, session: AsyncSession = Depends(
     all_cats = _parse_setting(settings.arxiv_categories)
     _active_orgs = [o for o in body.orgs if o in all_orgs]
     _active_categories = [c for c in body.categories if c in all_cats]
+    return await _build_config_out(session, all_orgs, all_cats)
+
+
+@router.put("/github-repos", response_model=SystemConfigOut)
+async def set_github_repos(body: GitHubReposIn, session: AsyncSession = Depends(get_session)):
+    import re
+    _slug_re = re.compile(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$")
+    valid = [r for r in body.repos if _slug_re.match(r)]
+    user_cfg = await _get_user_settings(session)
+    user_cfg.github_repos = valid
+    await session.commit()
+    all_orgs = _parse_setting(settings.arxiv_orgs)
+    all_cats = _parse_setting(settings.arxiv_categories)
     return await _build_config_out(session, all_orgs, all_cats)

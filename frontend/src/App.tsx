@@ -18,7 +18,8 @@ export default function App() {
         <Route path="/ideas/:id/build/:tab" element={<BuildOutputPage />} />
         <Route path="/saved" element={<SavedPage />} />
         <Route path="/history" element={<HistoryPage />} />
-        <Route path="/settings" element={<SettingsPage />} />
+        <Route path="/settings" element={<Navigate to="/settings/runner" replace />} />
+        <Route path="/settings/:tab" element={<SettingsPage />} />
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>
     </>

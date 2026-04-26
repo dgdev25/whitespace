@@ -29,4 +29,6 @@ export const api = {
     http.put("/system/pipeline-config", { ideas_per_run, max_sources_per_run, cached_analyses_count }).then(r => r.data),
   setRunnerModel: (runner: string, model: string | null): Promise<SystemConfig> =>
     http.put("/system/runner-model", { runner, model }).then(r => r.data),
+  setGithubRepos: (repos: string[]): Promise<SystemConfig> =>
+    http.put("/system/github-repos", { repos }).then(r => r.data),
 };
