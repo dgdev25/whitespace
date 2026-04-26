@@ -13,3 +13,6 @@ dist/
 .DS_Store
 *.db
 *.sqlite
+*.db-shm
+*.db-wal
+backend/package*.json
