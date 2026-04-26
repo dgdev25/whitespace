@@ -30,3 +30,5 @@ Break into 3–5 phases, each producing a working increment:
 - Small team (3 engineers): X–Y weeks to MVP
 
 Keep the total under 600 words. Be specific — name libraries, protocols, and patterns.
+
+IMPORTANT: Respond with ONLY the Markdown document. Do not use any tools, write any files, or include any preamble, explanation, or commentary before or after the document.

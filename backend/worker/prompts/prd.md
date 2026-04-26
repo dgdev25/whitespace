@@ -66,3 +66,5 @@ List external systems, APIs, or data formats this product must integrate with.
 ---
 *This PRD is derived from the research context and should be treated as a starting point for
 validation, not a final specification.*
+
+IMPORTANT: Respond with ONLY the Markdown document. Do not use any tools, write any files, or include any preamble, explanation, or commentary before or after the document.

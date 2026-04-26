@@ -17,7 +17,7 @@ class ClaudeCLIRunner(LLMRunner):
         cli = resolve_cli("claude")
         if cli is None:
             raise RuntimeError("claude CLI not found on PATH")
-        cmd = [*cli, "-p", "--output-format", "text"]
+        cmd = [*cli, "-p", "--output-format", "text", "--allowedTools", ""]
         if self._model:
             cmd += ["--model", self._model]
         proc = subprocess.run(

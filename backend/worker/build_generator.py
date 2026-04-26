@@ -18,6 +18,14 @@ def _sanitize(value: str) -> str:
     return value.replace("{{", "{ {").replace("}}", "} }")
 
 
+def _strip_preamble(text: str) -> str:
+    """Remove any prose before the first markdown heading (LLM meta-commentary)."""
+    for i, line in enumerate(text.splitlines()):
+        if line.startswith("#"):
+            return "\n".join(text.splitlines()[i:]).strip()
+    return text.strip()
+
+
 def _fill(template: str, idea: Idea) -> str:
     return (template
         .replace("{{title}}", _sanitize(idea.title))
@@ -36,12 +44,12 @@ def generate_product_sketch(idea: Idea, runner) -> dict:
 
 def generate_technical_plan(idea: Idea, runner) -> str:
     prompt = _fill(_PLAN_PROMPT, idea)
-    return runner.run(prompt)
+    return _strip_preamble(runner.run(prompt))
 
 
 def generate_prd(idea: Idea, runner) -> str:
     prompt = _fill(_PRD_PROMPT, idea)
-    return runner.run(prompt)
+    return _strip_preamble(runner.run(prompt))
 
 
 def run_build(session: Session, build_id: str, idea_id: str) -> None:
