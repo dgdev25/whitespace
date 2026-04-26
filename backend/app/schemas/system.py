@@ -27,6 +27,7 @@ class SystemConfigOut(BaseModel):
     ideas_per_run: int
     max_sources_per_run: int
     cached_analyses_count: int
+    runner_model_prefs: dict[str, str]
     arxiv_orgs: list[str]        # full pool from .env
     arxiv_categories: list[str]  # full pool from .env
     active_orgs: list[str]       # user-selected subset
@@ -61,9 +62,15 @@ class ScheduleStatusOut(BaseModel):
 
 
 class PipelineConfigIn(BaseModel):
+    ideas_per_run: int
     max_sources_per_run: int
     cached_analyses_count: int
 
 
 class RunnerPreferenceIn(BaseModel):
     name: str | None
+
+
+class RunnerModelIn(BaseModel):
+    runner: str
+    model: str | None  # None clears the preference (reverts to default)

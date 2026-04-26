@@ -11,6 +11,9 @@ _RETRIES = 2
 class OpenRouterRunner(LLMRunner):
     name = "openrouter"
 
+    def __init__(self, model: str | None = None):
+        self._model = model
+
     def is_available(self) -> bool:
         return bool(os.getenv("OPENROUTER_API_KEY"))
 
@@ -27,7 +30,7 @@ class OpenRouterRunner(LLMRunner):
                 "https://openrouter.ai/api/v1/chat/completions",
                 headers={"Authorization": f"Bearer {api_key}"},
                 json={
-                    "model": os.getenv("OPENROUTER_ANALYSIS_MODEL", "anthropic/claude-haiku-4-5"),
+                    "model": self._model or os.getenv("OPENROUTER_ANALYSIS_MODEL", "anthropic/claude-haiku-4-5"),
                     "messages": messages,
                 },
                 timeout=60,

@@ -64,6 +64,7 @@ export interface BuildOutput {
   idea_id: string;
   product_sketch: ProductSketch;
   technical_plan: string;
+  prd: string | null;
   status: "pending" | "generating" | "ready" | "failed";
   created_at: string;
 }
@@ -86,6 +87,7 @@ export interface SystemConfig {
   ideas_per_run: number;
   max_sources_per_run: number;
   cached_analyses_count: number;
+  runner_model_prefs: Record<string, string>;
   arxiv_orgs: string[];
   arxiv_categories: string[];
   active_orgs: string[];

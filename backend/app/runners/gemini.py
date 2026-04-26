@@ -12,6 +12,9 @@ _RETRIES = 2
 class GeminiRunner(LLMRunner):
     name = "gemini"
 
+    def __init__(self, model: str | None = None):
+        self._model = model
+
     def is_available(self) -> bool:
         return bool(os.getenv("GEMINI_API_KEY"))
 
@@ -19,7 +22,7 @@ class GeminiRunner(LLMRunner):
         api_key = os.getenv("GEMINI_API_KEY")
         if not api_key:
             raise RuntimeError("GEMINI_API_KEY missing")
-        model = quote(os.getenv("GEMINI_MODEL", "gemini-2.0-flash"), safe="")
+        model = quote(self._model or os.getenv("GEMINI_MODEL", "gemini-2.0-flash"), safe="")
         payload: dict = {"contents": [{"parts": [{"text": prompt}]}]}
         if system:
             payload["system_instruction"] = {"parts": [{"text": system}]}

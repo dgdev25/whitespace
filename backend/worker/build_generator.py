@@ -10,6 +10,7 @@ logger = logging.getLogger(__name__)
 
 _SKETCH_PROMPT = (Path(__file__).parent / "prompts" / "product_sketch.md").read_text()
 _PLAN_PROMPT = (Path(__file__).parent / "prompts" / "technical_plan.md").read_text()
+_PRD_PROMPT = (Path(__file__).parent / "prompts" / "prd.md").read_text()
 
 
 def _sanitize(value: str) -> str:
@@ -37,6 +38,11 @@ def generate_technical_plan(idea: Idea, runner) -> str:
     return runner.run(prompt)
 
 
+def generate_prd(idea: Idea, runner) -> str:
+    prompt = _fill(_PRD_PROMPT, idea)
+    return runner.run(prompt)
+
+
 def run_build(session: Session, build_id: str, idea_id: str) -> None:
     build = session.get(BuildOutput, build_id)
     idea = session.get(Idea, idea_id)
@@ -51,6 +57,9 @@ def run_build(session: Session, build_id: str, idea_id: str) -> None:
         session.commit()
 
         build.technical_plan = generate_technical_plan(idea, runner)
+        session.commit()
+
+        build.prd = generate_prd(idea, runner)
         build.status = "ready"
         session.commit()
         logger.info(f"Build {build_id} complete")

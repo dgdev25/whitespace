@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "../api/client";
 
+
 export const useToday = () => useQuery({ queryKey: ["today"], queryFn: api.getTodayFeed });
 export const useIdea = (id: string) => useQuery({ queryKey: ["idea", id], queryFn: () => api.getIdea(id) });
 export const useRunners = () => useQuery({ queryKey: ["runners"], queryFn: api.getRunners, staleTime: 30_000 });
@@ -33,11 +34,20 @@ export const useSetSchedule = () => {
   });
 };
 
+export const useSetRunnerModel = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ runner, model }: { runner: string; model: string | null }) =>
+      api.setRunnerModel(runner, model),
+    onSuccess: (data) => qc.setQueryData(["config"], data),
+  });
+};
+
 export const useSetPipelineConfig = () => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ max_sources_per_run, cached_analyses_count }: { max_sources_per_run: number; cached_analyses_count: number }) =>
-      api.setPipelineConfig(max_sources_per_run, cached_analyses_count),
+    mutationFn: ({ ideas_per_run, max_sources_per_run, cached_analyses_count }: { ideas_per_run: number; max_sources_per_run: number; cached_analyses_count: number }) =>
+      api.setPipelineConfig(ideas_per_run, max_sources_per_run, cached_analyses_count),
     onSuccess: (data) => qc.setQueryData(["config"], data),
   });
 };

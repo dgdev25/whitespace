@@ -31,5 +31,6 @@ class BuildOutputOut(BaseModel):
     idea_id: str
     product_sketch: ProductSketch | dict
     technical_plan: str
+    prd: str | None
     status: str
     created_at: datetime

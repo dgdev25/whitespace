@@ -5,5 +5,6 @@ from .idea import Idea
 from .ingestion_run import IngestionRun
 from .paper import Paper
 from .saved_idea import SavedIdea
+from .user_settings import UserSettings
 
-__all__ = ["Paper", "Chunk", "Idea", "ConnectedIdea", "SavedIdea", "BuildOutput", "IngestionRun"]
+__all__ = ["Paper", "Chunk", "Idea", "ConnectedIdea", "SavedIdea", "BuildOutput", "IngestionRun", "UserSettings"]

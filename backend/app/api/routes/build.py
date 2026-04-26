@@ -1,6 +1,5 @@
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from sqlalchemy import select
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_session
@@ -37,20 +36,23 @@ async def trigger_build(
     existing = (
         await session.execute(select(BuildOutput).where(BuildOutput.idea_id == idea_id))
     ).scalars().first()
-    if existing and existing.status in ("ready", "generating"):
+    if existing:
+        if existing.status == "generating":
+            return BuildOutputOut.model_validate(existing, from_attributes=True)
+        if existing.status == "ready" and existing.prd is not None and existing.technical_plan:
+            return BuildOutputOut.model_validate(existing, from_attributes=True)
+        # "failed", "pending", or ready with missing content — reset and retry
+        existing.product_sketch = {}
+        existing.technical_plan = ""
+        existing.prd = None
+        existing.status = "generating"
+        await session.commit()
+        await session.refresh(existing)
+        background_tasks.add_task(_background_build, existing.id, idea_id)
         return BuildOutputOut.model_validate(existing, from_attributes=True)
     build = BuildOutput(idea_id=idea_id, product_sketch={}, technical_plan="", status="generating")
     session.add(build)
-    try:
-        await session.commit()
-        await session.refresh(build)
-    except IntegrityError:
-        await session.rollback()
-        existing = (
-            await session.execute(select(BuildOutput).where(BuildOutput.idea_id == idea_id))
-        ).scalars().first()
-        if existing:
-            return BuildOutputOut.model_validate(existing, from_attributes=True)
-        raise HTTPException(409, "Build already exists")
+    await session.commit()
+    await session.refresh(build)
     background_tasks.add_task(_background_build, build.id, idea_id)
     return BuildOutputOut.model_validate(build, from_attributes=True)

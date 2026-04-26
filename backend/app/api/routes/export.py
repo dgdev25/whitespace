@@ -77,6 +77,60 @@ def _build_markdown(idea: Idea, build: BuildOutput) -> str:
 """
 
 
+@router.get("/{idea_id}/prd")
+async def export_prd(
+    idea_id: str, session: AsyncSession = Depends(get_session)
+) -> Response:
+    build = (
+        await session.execute(
+            select(BuildOutput).where(BuildOutput.idea_id == idea_id)
+        )
+    ).scalars().first()
+    idea = (
+        await session.execute(select(Idea).where(Idea.id == idea_id))
+    ).scalars().first()
+
+    if not build or build.status != "ready" or not build.prd:
+        raise HTTPException(status_code=404, detail="PRD not available")
+    if not idea:
+        raise HTTPException(status_code=404, detail="Idea not found")
+
+    safe_title = "".join(c if c.isalnum() or c in " -" else "" for c in idea.title).strip()
+    safe_title = "-".join(safe_title.split())[:80] or "prd"
+    return Response(
+        content=build.prd,
+        media_type="text/markdown",
+        headers={"Content-Disposition": f'attachment; filename="{safe_title}-prd.md"'},
+    )
+
+
+@router.get("/{idea_id}/plan")
+async def export_plan(
+    idea_id: str, session: AsyncSession = Depends(get_session)
+) -> Response:
+    build = (
+        await session.execute(
+            select(BuildOutput).where(BuildOutput.idea_id == idea_id)
+        )
+    ).scalars().first()
+    idea = (
+        await session.execute(select(Idea).where(Idea.id == idea_id))
+    ).scalars().first()
+
+    if not build or build.status != "ready" or not build.technical_plan:
+        raise HTTPException(status_code=404, detail="Technical plan not available")
+    if not idea:
+        raise HTTPException(status_code=404, detail="Idea not found")
+
+    safe_title = "".join(c if c.isalnum() or c in " -" else "" for c in idea.title).strip()
+    safe_title = "-".join(safe_title.split())[:80] or "technical-plan"
+    return Response(
+        content=build.technical_plan,
+        media_type="text/markdown",
+        headers={"Content-Disposition": f'attachment; filename="{safe_title}-technical-plan.md"'},
+    )
+
+
 @router.get("/{idea_id}/markdown")
 async def export_md(
     idea_id: str, session: AsyncSession = Depends(get_session)

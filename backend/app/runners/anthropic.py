@@ -11,6 +11,9 @@ _RETRIES = 2
 class AnthropicRunner(LLMRunner):
     name = "anthropic"
 
+    def __init__(self, model: str | None = None):
+        self._model = model
+
     def is_available(self) -> bool:
         return bool(os.getenv("ANTHROPIC_API_KEY"))
 
@@ -19,7 +22,7 @@ class AnthropicRunner(LLMRunner):
         if not api_key:
             raise RuntimeError("ANTHROPIC_API_KEY missing")
         payload = {
-            "model": os.getenv("ANTHROPIC_ANALYSIS_MODEL", "claude-haiku-4-5-20251001"),
+            "model": self._model or os.getenv("ANTHROPIC_ANALYSIS_MODEL", "claude-haiku-4-5-20251001"),
             "max_tokens": 4096,
             "system": system,
             "messages": [{"role": "user", "content": prompt}],

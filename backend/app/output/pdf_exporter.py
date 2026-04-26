@@ -114,4 +114,9 @@ def export_pdf(payload: dict, out_path: str) -> None:
     except (ImportError, OSError) as exc:
         logger.warning("PDF export unavailable (pango/weasyprint not configured): %s", exc)
         with open(out_path, "w") as f:
-            f.write("PDF export unavailable — install pango: brew install pango")
+            f.write(
+                "PDF export unavailable — weasyprint requires pango.\n"
+                "  macOS:  brew install pango\n"
+                "  Linux:  apt-get install libpango-1.0-0 libpangocairo-1.0-0\n"
+                "  Windows: see https://doc.courtbouillon.org/weasyprint/stable/first_steps.html"
+            )

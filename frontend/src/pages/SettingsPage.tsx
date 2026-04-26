@@ -1,6 +1,43 @@
 import { useState } from "react";
-import { useRunners, useSystemConfig, useSetRunner, useSetDataSources, useSchedule, useSetSchedule, useSetPipelineConfig } from "../hooks/useIdeas";
+import { useRunners, useSystemConfig, useSetRunner, useSetDataSources, useSchedule, useSetSchedule, useSetPipelineConfig, useSetRunnerModel } from "../hooks/useIdeas";
 import { useThemeStore } from "../store/themeStore";
+
+const RUNNER_MODELS: Record<string, { value: string; label: string }[]> = {
+  claude_cli: [
+    { value: "claude-opus-4-7", label: "Opus 4.7" },
+    { value: "claude-sonnet-4-6", label: "Sonnet 4.6" },
+    { value: "claude-haiku-4-5-20251001", label: "Haiku 4.5" },
+  ],
+  codex_cli: [
+    { value: "o4-mini", label: "o4-mini" },
+    { value: "o3", label: "o3" },
+    { value: "gpt-4o", label: "GPT-4o" },
+  ],
+  gemini_cli: [
+    { value: "gemini-2.5-pro", label: "2.5 Pro" },
+    { value: "gemini-2.0-flash", label: "2.0 Flash" },
+    { value: "gemini-1.5-pro", label: "1.5 Pro" },
+  ],
+  anthropic: [
+    { value: "claude-opus-4-7", label: "Opus 4.7" },
+    { value: "claude-sonnet-4-6", label: "Sonnet 4.6" },
+    { value: "claude-haiku-4-5-20251001", label: "Haiku 4.5" },
+  ],
+  gemini: [
+    { value: "gemini-2.5-pro", label: "2.5 Pro" },
+    { value: "gemini-2.0-flash", label: "2.0 Flash" },
+    { value: "gemini-1.5-pro", label: "1.5 Pro" },
+    { value: "gemini-1.5-flash", label: "1.5 Flash" },
+  ],
+  openrouter: [
+    { value: "anthropic/claude-opus-4-7", label: "Claude Opus 4.7" },
+    { value: "anthropic/claude-sonnet-4-6", label: "Claude Sonnet 4.6" },
+    { value: "anthropic/claude-haiku-4-5", label: "Claude Haiku 4.5" },
+    { value: "google/gemini-2.0-flash", label: "Gemini 2.0 Flash" },
+    { value: "openai/gpt-4o", label: "GPT-4o" },
+    { value: "openai/o4-mini", label: "o4-mini" },
+  ],
+};
 
 export function SettingsPage() {
   const { data: runners } = useRunners();
@@ -8,10 +45,12 @@ export function SettingsPage() {
   const { data: schedule } = useSchedule();
   const { theme, toggle } = useThemeStore();
   const setRunner = useSetRunner();
+  const setRunnerModel = useSetRunnerModel();
   const setDataSources = useSetDataSources();
   const setSchedule = useSetSchedule();
   const setPipelineConfig = useSetPipelineConfig();
   const [intervalInput, setIntervalInput] = useState<string>("");
+  const [ideasPerRunInput, setIdeasPerRunInput] = useState<string>("");
   const [maxSourcesInput, setMaxSourcesInput] = useState<string>("");
   const [cachedCountInput, setCachedCountInput] = useState<string>("");
 
@@ -30,16 +69,17 @@ export function SettingsPage() {
 
       {/* LLM Runners */}
       <SettingsCard title="LLM Runner" description="Select which runner to use. Only available runners can be enabled.">
-        {runners ? runners.runners.map((r, i) => {
+        {runners && config ? runners.runners.map((r, i) => {
           const isActive = runners.active === r.name;
+          const modelOptions = RUNNER_MODELS[r.name] ?? [];
+          const currentModel = config.runner_model_prefs[r.name] ?? "";
           return (
             <div key={r.name} style={{
-              display: "flex", alignItems: "center", justifyContent: "space-between",
               padding: "14px 0",
               borderBottom: i < runners.runners.length - 1 ? "1px solid var(--border)" : "none",
               opacity: r.available ? 1 : 0.45,
             }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                 <div>
                   <p style={{ fontSize: 14, fontWeight: 500, color: "var(--text-primary)" }}>{r.label}</p>
                   <p style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2 }}>
@@ -49,26 +89,45 @@ export function SettingsPage() {
                     </span>}
                   </p>
                 </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                  {modelOptions.length > 0 && (
+                    <select
+                      value={currentModel}
+                      onChange={e => setRunnerModel.mutate({ runner: r.name, model: e.target.value || null })}
+                      disabled={setRunnerModel.isPending}
+                      style={{
+                        padding: "5px 10px", fontSize: 12, borderRadius: 6,
+                        border: "1px solid var(--border)", background: "var(--bg)",
+                        color: "var(--text-secondary)", fontFamily: "inherit", cursor: "pointer",
+                      }}
+                    >
+                      <option value="">Default</option>
+                      {modelOptions.map(opt => (
+                        <option key={opt.value} value={opt.value}>{opt.label}</option>
+                      ))}
+                    </select>
+                  )}
+                  <button
+                    onClick={() => r.available && handleToggle(r.name)}
+                    disabled={!r.available || setRunner.isPending}
+                    style={{
+                      width: 44, height: 24, borderRadius: 999, border: "none", padding: 0,
+                      background: isActive ? "var(--accent)" : "var(--border)",
+                      position: "relative", flexShrink: 0,
+                      cursor: r.available ? "pointer" : "not-allowed",
+                      transition: "background 0.2s",
+                    }}
+                    aria-label={`${isActive ? "Disable" : "Enable"} ${r.label}`}
+                  >
+                    <span style={{
+                      position: "absolute", top: 3, left: isActive ? 23 : 3,
+                      width: 18, height: 18, borderRadius: "50%", background: "white",
+                      boxShadow: "0 1px 3px rgba(0,0,0,0.25)",
+                      transition: "left 0.2s",
+                    }} />
+                  </button>
+                </div>
               </div>
-              <button
-                onClick={() => r.available && handleToggle(r.name)}
-                disabled={!r.available || setRunner.isPending}
-                style={{
-                  width: 44, height: 24, borderRadius: 999, border: "none", padding: 0,
-                  background: isActive ? "var(--accent)" : "var(--border)",
-                  position: "relative", flexShrink: 0,
-                  cursor: r.available ? "pointer" : "not-allowed",
-                  transition: "background 0.2s",
-                }}
-                aria-label={`${isActive ? "Disable" : "Enable"} ${r.label}`}
-              >
-                <span style={{
-                  position: "absolute", top: 3, left: isActive ? 23 : 3,
-                  width: 18, height: 18, borderRadius: "50%", background: "white",
-                  boxShadow: "0 1px 3px rgba(0,0,0,0.25)",
-                  transition: "left 0.2s",
-                }} />
-              </button>
             </div>
           );
         }) : <p style={{ color: "var(--text-muted)", fontSize: 14 }}>Loading...</p>}
@@ -78,19 +137,34 @@ export function SettingsPage() {
       <SettingsCard title="Pipeline">
         {config ? (
           <>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, marginBottom: 14 }}>
+            <div style={{ marginBottom: 20 }}>
               <FormField label="Daily Schedule (UTC hour)" value={String(config.schedule_hour)} />
-              <FormField label="Ideas per Run" value={String(config.ideas_per_run)} />
-            </div>
-            <p style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 20 }}>
-              Schedule and ideas count: edit in <code style={{ background: "var(--bg)", padding: "2px 6px", borderRadius: 4, fontSize: 11 }}>backend/.env</code> and restart.
-            </p>
-            <div style={{ borderTop: "1px solid var(--border)", paddingTop: 20 }}>
-              <p style={{ fontSize: 14, fontWeight: 500, color: "var(--text-primary)", marginBottom: 4 }}>Source Limits</p>
-              <p style={{ fontSize: 13, color: "var(--text-muted)", marginBottom: 16 }}>
-                Cap how many new sources are ingested and how many cached analyses are loaded per run.
+              <p style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 8 }}>
+                Schedule hour: edit in <code style={{ background: "var(--bg)", padding: "2px 6px", borderRadius: 4, fontSize: 11 }}>backend/.env</code> and restart.
               </p>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, marginBottom: 16 }}>
+            </div>
+            <div style={{ borderTop: "1px solid var(--border)", paddingTop: 20 }}>
+              <p style={{ fontSize: 14, fontWeight: 500, color: "var(--text-primary)", marginBottom: 4 }}>Run Limits</p>
+              <p style={{ fontSize: 13, color: "var(--text-muted)", marginBottom: 16 }}>
+                Control how many ideas are generated and how many sources are used per pipeline run.
+              </p>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 20, marginBottom: 16 }}>
+                <div>
+                  <label style={{ display: "block", fontSize: 13, fontWeight: 500, color: "var(--text-secondary)", marginBottom: 8 }}>
+                    Ideas per Run
+                  </label>
+                  <input
+                    type="number" min={1}
+                    value={ideasPerRunInput || config.ideas_per_run}
+                    onChange={e => setIdeasPerRunInput(e.target.value)}
+                    style={{
+                      width: "100%", padding: "10px 12px", fontSize: 14,
+                      borderRadius: 8, border: "1px solid var(--border)",
+                      background: "var(--bg)", color: "var(--text-primary)", fontFamily: "inherit",
+                      boxSizing: "border-box",
+                    }}
+                  />
+                </div>
                 <div>
                   <label style={{ display: "block", fontSize: 13, fontWeight: 500, color: "var(--text-secondary)", marginBottom: 8 }}>
                     Max New Sources per Run
@@ -126,9 +200,11 @@ export function SettingsPage() {
               </div>
               <button
                 onClick={() => {
+                  const ideas = Math.max(1, parseInt(ideasPerRunInput || String(config.ideas_per_run), 10));
                   const maxSrc = Math.max(1, parseInt(maxSourcesInput || String(config.max_sources_per_run), 10));
                   const cached = Math.max(0, parseInt(cachedCountInput || String(config.cached_analyses_count), 10));
-                  setPipelineConfig.mutate({ max_sources_per_run: maxSrc, cached_analyses_count: cached });
+                  setPipelineConfig.mutate({ ideas_per_run: ideas, max_sources_per_run: maxSrc, cached_analyses_count: cached });
+                  setIdeasPerRunInput("");
                   setMaxSourcesInput("");
                   setCachedCountInput("");
                 }}

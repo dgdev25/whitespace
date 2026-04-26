@@ -40,9 +40,11 @@ def run_daily_pipeline(
     session: Session,
     max_sources: int | None = None,
     cached_analyses: int | None = None,
+    ideas_per_run: int | None = None,
 ) -> None:
     max_new = max_sources if max_sources is not None else settings.max_sources_per_run
     cached_limit = cached_analyses if cached_analyses is not None else settings.cached_analyses_count
+    n_ideas = ideas_per_run if ideas_per_run is not None else settings.ideas_per_run
 
     today = date.today().isoformat()
     logger.info(f"Starting daily pipeline for {today}")
@@ -193,8 +195,8 @@ def run_daily_pipeline(
         prog.emit("gap_map", "Gap map complete", "done")
 
         # 7. Synthesise
-        prog.emit("synthesise", f"Synthesising {settings.ideas_per_run} ideas…", "running")
-        ideas_raw = synthesise_ideas(gaps, n=settings.ideas_per_run)
+        prog.emit("synthesise", f"Synthesising {n_ideas} ideas…", "running")
+        ideas_raw = synthesise_ideas(gaps, n=n_ideas)
         prog.emit("synthesise", f"{len(ideas_raw)} ideas synthesised", "done")
 
         # 8. Score
@@ -203,9 +205,9 @@ def run_daily_pipeline(
         prog.emit("score", "Scoring complete", "done")
 
         # 9. Select
-        prog.emit("select", f"Selecting top {settings.ideas_per_run} ideas…", "running")
+        prog.emit("select", f"Selecting top {n_ideas} ideas…", "running")
         idea_records = select_and_persist(
-            session, ideas_scored, n=settings.ideas_per_run, run_id=run.id
+            session, ideas_scored, n=n_ideas, run_id=run.id
         )
         prog.emit("select", f"{len(idea_records)} ideas saved", "done")
 

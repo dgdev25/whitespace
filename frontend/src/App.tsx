@@ -14,7 +14,8 @@ export default function App() {
       <Routes>
         <Route path="/" element={<FeedPage />} />
         <Route path="/ideas/:id" element={<IdeaDetailPage />} />
-        <Route path="/ideas/:id/build" element={<BuildOutputPage />} />
+        <Route path="/ideas/:id/build" element={<Navigate to="overview" replace />} />
+        <Route path="/ideas/:id/build/:tab" element={<BuildOutputPage />} />
         <Route path="/saved" element={<SavedPage />} />
         <Route path="/history" element={<HistoryPage />} />
         <Route path="/settings" element={<SettingsPage />} />

@@ -11,7 +11,9 @@ from sse_starlette.sse import EventSourceResponse
 
 from app.api.deps import get_session
 from app.core.config import settings
-from app.schemas.system import DataSourcesIn, HealthOut, PipelineConfigIn, PipelineRunOut, PipelineStatusOut, RunnerOut, RunnerPreferenceIn, RunnersOut, ScheduleConfigIn, ScheduleStatusOut, SystemConfigOut
+from app.db.models.user_settings import UserSettings
+from app.runners.selector import set_model_prefs
+from app.schemas.system import DataSourcesIn, HealthOut, PipelineConfigIn, PipelineRunOut, PipelineStatusOut, RunnerModelIn, RunnerOut, RunnerPreferenceIn, RunnersOut, ScheduleConfigIn, ScheduleStatusOut, SystemConfigOut
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/system", tags=["system"])
@@ -20,10 +22,6 @@ _pipeline_lock = threading.Lock()
 _preferred_runner: str | None = None
 _active_orgs: list[str] | None = None       # None = use all from settings
 _active_categories: list[str] | None = None  # None = use all from settings
-
-# Pipeline config overrides (None = use settings defaults)
-_max_sources_per_run: int | None = None
-_cached_analyses_count: int | None = None
 
 # Scheduling state
 _schedule_enabled: bool = False
@@ -40,11 +38,13 @@ def _run_pipeline_sync():
     from worker.db import SessionLocal
     from worker.orchestrator import run_daily_pipeline
 
-    max_src = _max_sources_per_run if _max_sources_per_run is not None else settings.max_sources_per_run
-    cached = _cached_analyses_count if _cached_analyses_count is not None else settings.cached_analyses_count
-
     with SessionLocal() as s:
-        run_daily_pipeline(s, max_sources=max_src, cached_analyses=cached)
+        user_cfg = s.get(UserSettings, 1)
+        max_src = user_cfg.max_sources_per_run if user_cfg else settings.max_sources_per_run
+        cached = user_cfg.cached_analyses_count if user_cfg else settings.cached_analyses_count
+        ideas = user_cfg.ideas_per_run if user_cfg else settings.ideas_per_run
+        set_model_prefs(user_cfg.runner_model_prefs if user_cfg else {})
+        run_daily_pipeline(s, max_sources=max_src, cached_analyses=cached, ideas_per_run=ideas)
 
 
 @router.get("/health", response_model=HealthOut)
@@ -106,6 +106,22 @@ async def set_runner(body: RunnerPreferenceIn):
     else:
         active = next((r.name for r in checks if r.available), None)
     return RunnersOut(runners=checks, active=active)
+
+
+@router.put("/runner-model", response_model=SystemConfigOut)
+async def set_runner_model(body: RunnerModelIn, session: AsyncSession = Depends(get_session)):
+    user_cfg = await _get_user_settings(session)
+    prefs: dict[str, str] = dict(user_cfg.runner_model_prefs or {})
+    if body.model:
+        prefs[body.runner] = body.model
+    else:
+        prefs.pop(body.runner, None)
+    user_cfg.runner_model_prefs = prefs
+    await session.commit()
+    set_model_prefs(prefs)
+    all_orgs = _parse_setting(settings.arxiv_orgs)
+    all_cats = _parse_setting(settings.arxiv_categories)
+    return await _build_config_out(session, all_orgs, all_cats)
 
 
 @router.get("/pipeline/status", response_model=PipelineStatusOut)
@@ -218,13 +234,30 @@ async def set_schedule(body: ScheduleConfigIn):
     )
 
 
-def _build_config_out(all_orgs: list[str], all_cats: list[str]) -> SystemConfigOut:
+async def _get_user_settings(session: AsyncSession) -> UserSettings:
+    user_cfg = await session.get(UserSettings, 1)
+    if user_cfg is None:
+        user_cfg = UserSettings(
+            id=1,
+            ideas_per_run=settings.ideas_per_run,
+            max_sources_per_run=settings.max_sources_per_run,
+            cached_analyses_count=settings.cached_analyses_count,
+            runner_model_prefs={},
+        )
+        session.add(user_cfg)
+        await session.commit()
+    return user_cfg
+
+
+async def _build_config_out(session: AsyncSession, all_orgs: list[str], all_cats: list[str]) -> SystemConfigOut:
+    user_cfg = await _get_user_settings(session)
     return SystemConfigOut(
         schedule_hour=settings.worker_schedule_hour,
         schedule_minute=settings.worker_schedule_minute,
-        ideas_per_run=settings.ideas_per_run,
-        max_sources_per_run=_max_sources_per_run if _max_sources_per_run is not None else settings.max_sources_per_run,
-        cached_analyses_count=_cached_analyses_count if _cached_analyses_count is not None else settings.cached_analyses_count,
+        ideas_per_run=user_cfg.ideas_per_run,
+        max_sources_per_run=user_cfg.max_sources_per_run,
+        cached_analyses_count=user_cfg.cached_analyses_count,
+        runner_model_prefs=user_cfg.runner_model_prefs or {},
         arxiv_orgs=all_orgs,
         arxiv_categories=all_cats,
         active_orgs=_active_orgs if _active_orgs is not None else all_orgs,
@@ -233,27 +266,29 @@ def _build_config_out(all_orgs: list[str], all_cats: list[str]) -> SystemConfigO
 
 
 @router.get("/config", response_model=SystemConfigOut)
-async def get_config():
+async def get_config(session: AsyncSession = Depends(get_session)):
     all_orgs = _parse_setting(settings.arxiv_orgs)
     all_cats = _parse_setting(settings.arxiv_categories)
-    return _build_config_out(all_orgs, all_cats)
+    return await _build_config_out(session, all_orgs, all_cats)
 
 
 @router.put("/pipeline-config", response_model=SystemConfigOut)
-async def set_pipeline_config(body: PipelineConfigIn):
-    global _max_sources_per_run, _cached_analyses_count
-    _max_sources_per_run = max(1, body.max_sources_per_run)
-    _cached_analyses_count = max(0, body.cached_analyses_count)
+async def set_pipeline_config(body: PipelineConfigIn, session: AsyncSession = Depends(get_session)):
+    user_cfg = await _get_user_settings(session)
+    user_cfg.max_sources_per_run = max(1, body.max_sources_per_run)
+    user_cfg.cached_analyses_count = max(0, body.cached_analyses_count)
+    user_cfg.ideas_per_run = max(1, body.ideas_per_run)
+    await session.commit()
     all_orgs = _parse_setting(settings.arxiv_orgs)
     all_cats = _parse_setting(settings.arxiv_categories)
-    return _build_config_out(all_orgs, all_cats)
+    return await _build_config_out(session, all_orgs, all_cats)
 
 
 @router.put("/data-sources", response_model=SystemConfigOut)
-async def set_data_sources(body: DataSourcesIn):
+async def set_data_sources(body: DataSourcesIn, session: AsyncSession = Depends(get_session)):
     global _active_orgs, _active_categories
     all_orgs = _parse_setting(settings.arxiv_orgs)
     all_cats = _parse_setting(settings.arxiv_categories)
     _active_orgs = [o for o in body.orgs if o in all_orgs]
     _active_categories = [c for c in body.categories if c in all_cats]
-    return _build_config_out(all_orgs, all_cats)
+    return await _build_config_out(session, all_orgs, all_cats)
