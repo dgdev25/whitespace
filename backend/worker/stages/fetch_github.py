@@ -36,6 +36,16 @@ def _fetch_readme(owner: str, repo: str) -> str | None:
         return None
 
 
+def _check_rate_limit(resp: requests.Response) -> None:
+    """Raise a clear error if GitHub returned a rate-limit 403."""
+    if resp.status_code == 403:
+        msg = (resp.json() or {}).get("message", "")
+        if "rate limit" in msg.lower():
+            raise RuntimeError(
+                "GitHub API rate limit exceeded. Set GITHUB_TOKEN in backend/.env and restart the backend."
+            )
+
+
 def _list_handle_repos(handle: str) -> list[dict]:
     """Return all public repo metadata for a GitHub user or org (handles both account types)."""
     hdrs = _headers()
@@ -50,8 +60,9 @@ def _list_handle_repos(handle: str) -> list[dict]:
                 params={"type": "public", "per_page": 100, "page": page},
                 timeout=15,
             )
-            if resp.status_code == 404:
-                break
+            _check_rate_limit(resp)
+            if resp.status_code in (404, 403):
+                break  # not an org / no access — try user endpoint
             resp.raise_for_status()
             batch = [r for r in resp.json() if not r.get("private")]
             repos.extend(batch)
