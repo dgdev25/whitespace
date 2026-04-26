@@ -126,6 +126,8 @@ async def set_runner_model(body: RunnerModelIn, session: AsyncSession = Depends(
     else:
         prefs.pop(body.runner, None)
     user_cfg.runner_model_prefs = prefs
+    from sqlalchemy.orm.attributes import flag_modified
+    flag_modified(user_cfg, "runner_model_prefs")
     await session.commit()
     set_model_prefs(prefs)
     all_orgs = _parse_setting(settings.arxiv_orgs)
@@ -307,10 +309,12 @@ async def set_data_sources(body: DataSourcesIn, session: AsyncSession = Depends(
 @router.put("/github-repos", response_model=SystemConfigOut)
 async def set_github_repos(body: GitHubReposIn, session: AsyncSession = Depends(get_session)):
     import re
+    from sqlalchemy.orm.attributes import flag_modified
     _slug_re = re.compile(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$")
     valid = [r for r in body.repos if _slug_re.match(r)]
     user_cfg = await _get_user_settings(session)
     user_cfg.github_repos = valid
+    flag_modified(user_cfg, "github_repos")
     await session.commit()
     all_orgs = _parse_setting(settings.arxiv_orgs)
     all_cats = _parse_setting(settings.arxiv_categories)
