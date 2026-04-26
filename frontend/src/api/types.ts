@@ -106,3 +106,12 @@ export interface HistoryGroup {
   run_label: string;
   ideas: IdeaSummary[];
 }
+
+export interface OrgImportStatus {
+  running: boolean;
+  handle: string | null;
+  scanned: number;
+  total: number | null;
+  imported: number;
+  message: string;
+}

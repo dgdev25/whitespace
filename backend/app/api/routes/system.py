@@ -13,7 +13,7 @@ from app.api.deps import get_session
 from app.core.config import settings
 from app.db.models.user_settings import UserSettings
 from app.runners.selector import set_model_prefs
-from app.schemas.system import DataSourcesIn, GitHubReposIn, HealthOut, PipelineConfigIn, PipelineRunOut, PipelineStatusOut, RunnerModelIn, RunnerOut, RunnerPreferenceIn, RunnersOut, ScheduleConfigIn, ScheduleStatusOut, SystemConfigOut
+from app.schemas.system import DataSourcesIn, GitHubReposIn, HealthOut, OrgImportIn, OrgImportStatusOut, PipelineConfigIn, PipelineRunOut, PipelineStatusOut, RunnerModelIn, RunnerOut, RunnerPreferenceIn, RunnersOut, ScheduleConfigIn, ScheduleStatusOut, SystemConfigOut
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/system", tags=["system"])
@@ -22,6 +22,13 @@ _pipeline_lock = threading.Lock()
 _preferred_runner: str | None = None
 _active_orgs: list[str] | None = None       # None = use all from settings
 _active_categories: list[str] | None = None  # None = use all from settings
+
+# Org import state
+_org_import_lock = threading.Lock()
+_org_import_state: dict = {
+    "running": False, "handle": None, "scanned": 0,
+    "total": None, "imported": 0, "message": "",
+}
 
 # Scheduling state
 _schedule_enabled: bool = False
@@ -243,6 +250,68 @@ async def set_schedule(body: ScheduleConfigIn):
         interval_minutes=_schedule_interval_minutes,
         next_run_at=_schedule_next_run.isoformat() if _schedule_next_run else None,
     )
+
+
+def _import_handle_sync(handle: str) -> None:
+    from sqlalchemy import text as sql_text
+    from app.db.models.paper import Paper
+    from worker.db import SessionLocal
+    from worker.stages.fetch_github import fetch_handle_repos
+
+    try:
+        with SessionLocal() as session:
+            existing_ids = {r[0] for r in session.execute(sql_text("SELECT arxiv_id FROM papers")).all()}
+
+            def _progress(scanned: int, total: int) -> None:
+                _org_import_state.update({"scanned": scanned, "total": total,
+                                          "message": f"Scanning {scanned} of {total}…"})
+
+            repos = fetch_handle_repos(handle, existing_ids, on_progress=_progress)
+            for p in repos:
+                session.add(Paper(
+                    arxiv_id=p["arxiv_id"],
+                    title=p["title"],
+                    authors=p["authors"],
+                    abstract=p.get("abstract", ""),
+                    full_text=p.get("full_text", ""),
+                    categories=p.get("categories", ""),
+                    published_date=p.get("published_date", ""),
+                    url=p.get("url", ""),
+                    source="github",
+                ))
+            session.commit()
+            _org_import_state.update({
+                "running": False,
+                "imported": len(repos),
+                "message": f"Done — {len(repos)} new repo(s) imported from {handle}",
+            })
+    except Exception as exc:
+        logger.error("Org import failed: %s", exc)
+        _org_import_state.update({"running": False, "message": f"Error: {exc}"})
+    finally:
+        _org_import_lock.release()
+
+
+@router.post("/github-repos/import-org", response_model=OrgImportStatusOut)
+async def import_org_repos(body: OrgImportIn):
+    global _org_import_state
+    handle = body.handle.strip().lstrip("@").rstrip("/")
+    if not handle:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=400, detail="handle must not be empty")
+    if not _org_import_lock.acquire(blocking=False):
+        return OrgImportStatusOut(**_org_import_state)
+    _org_import_state = {
+        "running": True, "handle": handle, "scanned": 0,
+        "total": None, "imported": 0, "message": f"Starting scan of {handle}…",
+    }
+    threading.Thread(target=_import_handle_sync, args=(handle,), daemon=True).start()
+    return OrgImportStatusOut(**_org_import_state)
+
+
+@router.get("/github-repos/import-org/status", response_model=OrgImportStatusOut)
+async def get_org_import_status():
+    return OrgImportStatusOut(**_org_import_state)
 
 
 async def _get_user_settings(session: AsyncSession) -> UserSettings:

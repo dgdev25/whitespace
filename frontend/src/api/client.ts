@@ -1,5 +1,5 @@
 import axios from "axios";
-import type { TodayFeed, IdeaDetail, IdeaSummary, SavedIdea, BuildOutput, RunnersResponse, SystemConfig, PipelineRunResponse, HistoryGroup, ScheduleStatus } from "./types";
+import type { TodayFeed, IdeaDetail, IdeaSummary, SavedIdea, BuildOutput, RunnersResponse, SystemConfig, PipelineRunResponse, HistoryGroup, ScheduleStatus, OrgImportStatus } from "./types";
 
 const http = axios.create({ baseURL: "/api" });
 
@@ -31,4 +31,8 @@ export const api = {
     http.put("/system/runner-model", { runner, model }).then(r => r.data),
   setGithubRepos: (repos: string[]): Promise<SystemConfig> =>
     http.put("/system/github-repos", { repos }).then(r => r.data),
+  importOrg: (handle: string): Promise<OrgImportStatus> =>
+    http.post("/system/github-repos/import-org", { handle }).then(r => r.data),
+  getOrgImportStatus: (): Promise<OrgImportStatus> =>
+    http.get("/system/github-repos/import-org/status").then(r => r.data),
 };

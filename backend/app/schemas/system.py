@@ -79,3 +79,16 @@ class RunnerPreferenceIn(BaseModel):
 class RunnerModelIn(BaseModel):
     runner: str
     model: str | None  # None clears the preference (reverts to default)
+
+
+class OrgImportIn(BaseModel):
+    handle: str
+
+
+class OrgImportStatusOut(BaseModel):
+    running: bool
+    handle: str | None
+    scanned: int
+    total: int | None
+    imported: int
+    message: str

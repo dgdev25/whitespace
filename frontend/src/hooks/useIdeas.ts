@@ -60,6 +60,25 @@ export const useSetPipelineConfig = () => {
   });
 };
 
+export const useOrgImportStatus = () =>
+  useQuery({
+    queryKey: ["org-import-status"],
+    queryFn: api.getOrgImportStatus,
+    refetchInterval: (query) => (query.state.data?.running ? 1500 : false),
+    staleTime: 0,
+  });
+
+export const useImportOrg = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (handle: string) => api.importOrg(handle),
+    onSuccess: (data) => {
+      qc.setQueryData(["org-import-status"], data);
+      qc.invalidateQueries({ queryKey: ["org-import-status"] });
+    },
+  });
+};
+
 // Always polls every 8s so the NavBar always knows true pipeline state.
 export const usePipelineStatus = () =>
   useQuery({

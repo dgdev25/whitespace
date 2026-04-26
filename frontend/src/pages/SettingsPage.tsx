@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { useRunners, useSystemConfig, useSetRunner, useSetDataSources, useSchedule, useSetSchedule, useSetPipelineConfig, useSetRunnerModel, useSetGithubRepos } from "../hooks/useIdeas";
+import { useRunners, useSystemConfig, useSetRunner, useSetDataSources, useSchedule, useSetSchedule, useSetPipelineConfig, useSetRunnerModel, useSetGithubRepos, useImportOrg, useOrgImportStatus } from "../hooks/useIdeas";
 import { useThemeStore } from "../store/themeStore";
 
 const RUNNER_MODELS: Record<string, { value: string; label: string }[]> = {
@@ -59,6 +59,9 @@ export function SettingsPage() {
   const setSchedule = useSetSchedule();
   const setPipelineConfig = useSetPipelineConfig();
   const setGithubRepos = useSetGithubRepos();
+  const importOrg = useImportOrg();
+  const { data: orgImport } = useOrgImportStatus();
+  const [orgInput, setOrgInput] = useState<string>("");
   const [intervalInput, setIntervalInput] = useState<string>("");
   const [ideasPerRunInput, setIdeasPerRunInput] = useState<string>("");
   const [maxSourcesInput, setMaxSourcesInput] = useState<string>("");
@@ -311,6 +314,54 @@ export function SettingsPage() {
                 />
               </>
             ) : <p style={{ color: "var(--text-muted)", fontSize: 14 }}>Loading...</p>}
+          </SettingsCard>
+
+          <SettingsCard title="Import GitHub User or Org" description="Scan all public repos from a GitHub user or org and cache their READMEs. Only new repos are fetched — existing ones are skipped.">
+            <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+              <input
+                type="text"
+                placeholder="e.g. ruvnet"
+                value={orgInput}
+                onChange={e => setOrgInput(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === "Enter" && orgInput.trim() && !orgImport?.running) {
+                    importOrg.mutate(orgInput.trim());
+                  }
+                }}
+                disabled={orgImport?.running}
+                style={{ ...inputStyle, flex: 1 }}
+              />
+              <button
+                onClick={() => { if (orgInput.trim()) importOrg.mutate(orgInput.trim()); }}
+                disabled={!orgInput.trim() || orgImport?.running || importOrg.isPending}
+                style={primaryButtonStyle}
+              >
+                {orgImport?.running ? "Scanning…" : "Scan"}
+              </button>
+            </div>
+            {orgImport && orgImport.message && (
+              <div style={{
+                padding: "10px 14px", borderRadius: 8,
+                background: orgImport.running ? "var(--bg)" : (orgImport.message.startsWith("Error") ? "rgba(220,53,69,0.08)" : "rgba(40,167,69,0.08)"),
+                border: `1px solid ${orgImport.running ? "var(--border)" : (orgImport.message.startsWith("Error") ? "rgba(220,53,69,0.3)" : "rgba(40,167,69,0.3)")}`,
+              }}>
+                <p style={{ fontSize: 13, color: "var(--text-secondary)", margin: 0 }}>
+                  {orgImport.message}
+                </p>
+                {orgImport.running && orgImport.total !== null && (
+                  <div style={{ marginTop: 8, height: 4, borderRadius: 2, background: "var(--border)", overflow: "hidden" }}>
+                    <div style={{
+                      height: "100%", borderRadius: 2, background: "var(--accent)",
+                      width: `${Math.round((orgImport.scanned / orgImport.total) * 100)}%`,
+                      transition: "width 0.3s",
+                    }} />
+                  </div>
+                )}
+              </div>
+            )}
+            <p style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 10 }}>
+              Set <code style={{ background: "var(--bg)", padding: "1px 5px", borderRadius: 4, fontSize: 11 }}>GITHUB_TOKEN</code> in <code style={{ background: "var(--bg)", padding: "1px 5px", borderRadius: 4, fontSize: 11 }}>backend/.env</code> to avoid rate limits on large orgs.
+            </p>
           </SettingsCard>
 
           <SettingsCard title="GitHub Repositories" description="Add public GitHub repos as inspiration sources. Only README and description are used — no code is read.">
