@@ -153,11 +153,37 @@ def run_daily_pipeline(
                     paper.analysis = arxiv_to_analysis[paper.arxiv_id]
             session.commit()
 
+            # Analyse any previously-imported papers that have no LLM analysis yet
+            # (e.g. repos imported via org scan — READMEs stored but never analysed)
+            new_arxiv_ids = {p.arxiv_id for p, _ in paper_records}
+            unanalysed = (
+                session.query(Paper)
+                .filter(Paper.analysis.is_(None))
+                .filter(~Paper.arxiv_id.in_(new_arxiv_ids))
+                .order_by(Paper.created_at.desc())
+                .limit(max_new)
+                .all()
+            )
+            if unanalysed:
+                prog.emit("analyse", f"Analysing {len(unanalysed)} previously-imported sources…", "running")
+                unanalysed_dicts = [
+                    {"title": p.title, "abstract": p.abstract, "full_text": p.full_text,
+                     "arxiv_id": p.arxiv_id, "source": p.source}
+                    for p in unanalysed
+                ]
+                extra_analyses = analyse_papers(unanalysed_dicts)
+                extra_map = {a["arxiv_id"]: a for a in extra_analyses}
+                for p in unanalysed:
+                    if p.arxiv_id in extra_map:
+                        p.analysis = extra_map[p.arxiv_id]
+                session.commit()
+                new_analyses += extra_analyses
+
             # Load cached analyses from previously-analysed papers
             cached_papers = (
                 session.query(Paper)
                 .filter(Paper.analysis.isnot(None))
-                .filter(~Paper.arxiv_id.in_({p.arxiv_id for p, _ in paper_records}))
+                .filter(~Paper.arxiv_id.in_(new_arxiv_ids | {p.arxiv_id for p in unanalysed}))
                 .order_by(Paper.created_at.desc())
                 .limit(cached_limit)
                 .all()
@@ -168,6 +194,8 @@ def run_daily_pipeline(
 
             # Build arxiv_id → title lookup for grounded paper_refs in synthesis
             source_map: dict[str, str] = {p["arxiv_id"]: p["title"] for p in paper_dicts}
+            for p in unanalysed:
+                source_map.setdefault(p.arxiv_id, p.title)
             for p in cached_papers:
                 source_map.setdefault(p.arxiv_id, p.title)
 
@@ -186,18 +214,27 @@ def run_daily_pipeline(
             run.papers_fetched = 0
             session.commit()
 
-            # Prefer cached LLM analyses; fall back to pseudo-analyses for papers without one
+            # Prefer cached LLM analyses; properly analyse any unanalysed papers
+            # (covers org-imported repos whose READMEs have never been LLM-processed)
             cached = [p for p in existing_papers if p.analysis]
             uncached = [p for p in existing_papers if not p.analysis]
 
             analyses: list[dict] = [a for p in cached if (a := p.analysis) is not None]
             if uncached:
-                pseudo_dicts = [
+                to_analyse = uncached[:max_new]
+                prog.emit("analyse", f"Analysing {len(to_analyse)} unanalysed sources…", "running")
+                uncached_dicts = [
                     {"title": p.title, "abstract": p.abstract, "full_text": p.full_text,
                      "arxiv_id": p.arxiv_id, "source": getattr(p, "source", "arxiv")}
-                    for p in uncached[:10]
+                    for p in to_analyse
                 ]
-                analyses += _abstracts_to_pseudo_analyses(pseudo_dicts)
+                uncached_analyses = analyse_papers(uncached_dicts)
+                uncached_map = {a["arxiv_id"]: a for a in uncached_analyses}
+                for p in to_analyse:
+                    if p.arxiv_id in uncached_map:
+                        p.analysis = uncached_map[p.arxiv_id]
+                session.commit()
+                analyses += uncached_analyses
 
             # Build arxiv_id → title lookup for grounded paper_refs in synthesis
             source_map = {p.arxiv_id: p.title for p in existing_papers}
