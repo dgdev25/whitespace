@@ -5,6 +5,7 @@ const STEP_LABELS: Record<string, string> = {
   fetch_arxiv: "arXiv papers",
   fetch_blogs: "Blog posts",
   fetch_s2: "Semantic Scholar",
+  fetch_github: "GitHub repos",
   analyse: "Analysing sources",
   critique: "Critical review",
   gap_map: "Mapping gaps",
@@ -17,7 +18,7 @@ const STEP_LABELS: Record<string, string> = {
 };
 
 const STEP_ORDER = [
-  "start", "fetch_arxiv", "fetch_blogs", "fetch_s2",
+  "start", "fetch_arxiv", "fetch_blogs", "fetch_s2", "fetch_github",
   "analyse", "critique", "gap_map", "synthesise",
   "score", "select", "connect", "complete",
 ];

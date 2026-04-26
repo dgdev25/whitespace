@@ -9,7 +9,8 @@ from app.api.deps import get_session
 from app.db.models.connected_idea import ConnectedIdea
 from app.db.models.idea import Idea
 from app.db.models.ingestion_run import IngestionRun
-from app.schemas.ideas import ConnectedIdeaOut, HistoryGroup, IdeaDetail, IdeaSummary, TodayFeed
+from app.db.models.paper import Paper
+from app.schemas.ideas import ConnectedIdeaOut, HistoryGroup, IdeaDetail, IdeaSummary, PaperRef, TodayFeed
 
 router = APIRouter(prefix="/ideas", tags=["ideas"])
 
@@ -125,6 +126,32 @@ async def idea_detail(idea_id: str, session: AsyncSession = Depends(get_session)
     idea = result.scalars().first()
     if not idea:
         raise HTTPException(404, "Idea not found")
+
+    paper_ids: list[str] = idea.paper_ids or []
+    papers_result = await session.execute(
+        select(Paper).where(Paper.arxiv_id.in_(paper_ids))
+    )
+    paper_map = {p.arxiv_id: p for p in papers_result.scalars().all()}
+    paper_refs: list[PaperRef] = []
+    for pid in paper_ids:
+        p = paper_map.get(pid)
+        if p:
+            paper_refs.append(PaperRef(
+                arxiv_id=pid,
+                title=p.title or pid,
+                url=p.url or "",
+                source=p.source or "arxiv",
+            ))
+        else:
+            # Fallback: construct from ID shape
+            is_github = pid.startswith("github:")
+            paper_refs.append(PaperRef(
+                arxiv_id=pid,
+                title=pid.replace("github:", "") if is_github else pid,
+                url=f"https://github.com/{pid[7:]}" if is_github else f"https://arxiv.org/abs/{pid}",
+                source="github" if is_github else "arxiv",
+            ))
+
     conn_result = await session.execute(
         select(ConnectedIdea, Idea)
         .join(Idea, Idea.id == ConnectedIdea.connected_idea_id)
@@ -147,11 +174,12 @@ async def idea_detail(idea_id: str, session: AsyncSession = Depends(get_session)
         novelty_score=idea.novelty_score,
         feasibility_score=idea.feasibility_score,
         is_featured=idea.is_featured,
-        paper_ids=idea.paper_ids or [],
+        paper_ids=paper_ids,
         featured_date=idea.featured_date,
         why_novel=idea.why_novel,
         who_builds=idea.who_builds,
         who_buys=idea.who_buys,
         created_at=idea.created_at,
+        paper_refs=paper_refs,
         connections=connections,
     )

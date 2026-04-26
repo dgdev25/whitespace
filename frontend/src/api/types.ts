@@ -23,12 +23,21 @@ export interface IdeaSummary {
   is_featured: boolean;
   paper_ids: string[];
   featured_date: string | null;
+  created_at: string;
+}
+
+export interface PaperRef {
+  arxiv_id: string;
+  title: string;
+  url: string;
+  source: "arxiv" | "github" | "blog" | "semantic_scholar" | string;
 }
 
 export interface IdeaDetail extends IdeaSummary {
   why_novel: string;
   who_builds: string;
   who_buys: string;
+  paper_refs: PaperRef[];
   connections: ConnectedIdea[];
   created_at: string;
 }

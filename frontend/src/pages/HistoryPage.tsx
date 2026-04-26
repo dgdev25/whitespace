@@ -21,6 +21,18 @@ function formatDate(iso: string) {
   }
 }
 
+function formatDateTime(iso: string) {
+  try {
+    const d = new Date(iso);
+    return {
+      date: d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }),
+      time: d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }),
+    };
+  } catch {
+    return { date: iso, time: "" };
+  }
+}
+
 function scoreColor(v: number) {
   if (v >= 0.7) return "var(--badge-novel-text)";
   if (v >= 0.45) return "var(--badge-feasible-text)";
@@ -43,6 +55,8 @@ export function HistoryPage() {
   const [badge, setBadge] = useState<Badge | null>(null);
   const [sortKey, setSortKey] = useState<SortKey>("date");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 25;
 
   const rows = useMemo<Row[]>(() => {
     if (!groups) return [];
@@ -61,7 +75,7 @@ export function HistoryPage() {
         if (sortKey === "title") cmp = a.title.localeCompare(b.title);
         else if (sortKey === "novelty_score") cmp = a.novelty_score - b.novelty_score;
         else if (sortKey === "feasibility_score") cmp = a.feasibility_score - b.feasibility_score;
-        else cmp = a.date.localeCompare(b.date);
+        else cmp = a.created_at.localeCompare(b.created_at);
         return sortDir === "asc" ? cmp : -cmp;
       });
   }, [rows, search, badge, sortKey, sortDir]);
@@ -69,7 +83,11 @@ export function HistoryPage() {
   function handleSort(key: SortKey) {
     if (sortKey === key) setSortDir(d => d === "asc" ? "desc" : "asc");
     else { setSortKey(key); setSortDir("desc"); }
+    setPage(1);
   }
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   const th: React.CSSProperties = {
     padding: "10px 14px", fontSize: 12, fontWeight: 600,
@@ -101,7 +119,7 @@ export function HistoryPage() {
           type="text"
           placeholder="Search ideas…"
           value={search}
-          onChange={e => setSearch(e.target.value)}
+          onChange={e => { setSearch(e.target.value); setPage(1); }}
           style={{
             padding: "8px 12px", fontSize: 13, borderRadius: 8,
             border: "1px solid var(--border)", background: "var(--bg)",
@@ -111,7 +129,7 @@ export function HistoryPage() {
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
           <FilterChip label="All" active={badge === null} onClick={() => setBadge(null)} />
           {BADGES.map(b => (
-            <FilterChip key={b} label={b} active={badge === b} onClick={() => setBadge(b === badge ? null : b)} />
+            <FilterChip key={b} label={b} active={badge === b} onClick={() => { setBadge(b === badge ? null : b); setPage(1); }} />
           ))}
         </div>
         {(search || badge) && (
@@ -145,13 +163,13 @@ export function HistoryPage() {
             </tr>
           </thead>
           <tbody>
-            {filtered.length === 0 ? (
+            {paginated.length === 0 ? (
               <tr>
                 <td colSpan={5} style={{ padding: "32px 16px", textAlign: "center", color: "var(--text-muted)" }}>
                   No ideas match the current filters.
                 </td>
               </tr>
-            ) : filtered.map((row, i) => (
+            ) : paginated.map((row, i) => (
               <tr
                 key={row.id}
                 onClick={() => navigate(`/ideas/${row.id}`)}
@@ -189,15 +207,63 @@ export function HistoryPage() {
                 <td style={{ padding: "10px 14px", textAlign: "right", fontWeight: 600, color: scoreColor(row.feasibility_score) }}>
                   {row.feasibility_score.toFixed(2)}
                 </td>
-                <td style={{ padding: "10px 14px", textAlign: "right", color: "var(--text-muted)", whiteSpace: "nowrap" }}>
-                  {formatDate(row.date)}
+                <td style={{ padding: "10px 14px", textAlign: "right", whiteSpace: "nowrap" }}>
+                  {(() => { const { date, time } = formatDateTime(row.created_at); return (
+                    <>
+                      <span style={{ color: "var(--text-secondary)" }}>{date}</span>
+                      {time && <span style={{ color: "var(--text-muted)", fontSize: 11, marginLeft: 6 }}>{time}</span>}
+                    </>
+                  ); })()}
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
+
+      {totalPages > 1 && (
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 16 }}>
+          <span style={{ fontSize: 13, color: "var(--text-muted)" }}>
+            {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, filtered.length)} of {filtered.length}
+          </span>
+          <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+            <PageButton label="← Prev" disabled={page === 1} onClick={() => setPage(p => p - 1)} />
+            {Array.from({ length: totalPages }, (_, i) => i + 1)
+              .filter(p => p === 1 || p === totalPages || Math.abs(p - page) <= 1)
+              .reduce<(number | "…")[]>((acc, p, idx, arr) => {
+                if (idx > 0 && p - (arr[idx - 1] as number) > 1) acc.push("…");
+                acc.push(p);
+                return acc;
+              }, [])
+              .map((p, i) =>
+                p === "…"
+                  ? <span key={`ellipsis-${i}`} style={{ fontSize: 13, color: "var(--text-muted)", padding: "0 4px" }}>…</span>
+                  : <PageButton key={p} label={String(p)} active={p === page} onClick={() => setPage(p as number)} />
+              )}
+            <PageButton label="Next →" disabled={page === totalPages} onClick={() => setPage(p => p + 1)} />
+          </div>
+        </div>
+      )}
     </div>
+  );
+}
+
+function PageButton({ label, onClick, disabled, active }: { label: string; onClick: () => void; disabled?: boolean; active?: boolean }) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      style={{
+        padding: "5px 10px", borderRadius: 6, fontSize: 13, fontWeight: active ? 600 : 400,
+        background: active ? "var(--accent)" : "var(--bg)",
+        border: active ? "1px solid var(--accent)" : "1px solid var(--border)",
+        color: active ? "white" : disabled ? "var(--text-muted)" : "var(--text-secondary)",
+        cursor: disabled ? "default" : "pointer",
+        opacity: disabled ? 0.4 : 1,
+      }}
+    >
+      {label}
+    </button>
   );
 }
 

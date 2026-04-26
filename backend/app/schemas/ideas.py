@@ -5,6 +5,13 @@ from datetime import datetime
 from pydantic import BaseModel
 
 
+class PaperRef(BaseModel):
+    arxiv_id: str
+    title: str
+    url: str
+    source: str  # "arxiv" | "github" | "blog" | "semantic_scholar"
+
+
 class ConnectedIdeaOut(BaseModel):
     id: str
     title: str
@@ -22,12 +29,14 @@ class IdeaSummary(BaseModel):
     is_featured: bool
     paper_ids: list[str]
     featured_date: str | None
+    created_at: datetime
 
 
 class IdeaDetail(IdeaSummary):
     why_novel: str
     who_builds: str
     who_buys: str
+    paper_refs: list[PaperRef] = []
     connections: list[ConnectedIdeaOut] = []
     created_at: datetime
 

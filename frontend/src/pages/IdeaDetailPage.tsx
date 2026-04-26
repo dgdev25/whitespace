@@ -7,6 +7,20 @@ import { BadgeRow } from "../components/BadgeRow";
 import { ConnectedIdeas } from "../components/ConnectedIdeas";
 import { ScoreBar } from "../components/ScoreBar";
 
+const SOURCE_LABELS: Record<string, string> = {
+  arxiv: "arXiv",
+  github: "GitHub",
+  blog: "Blog",
+  semantic_scholar: "S2",
+};
+
+const SOURCE_COLORS: Record<string, string> = {
+  arxiv: "var(--text-muted)",
+  github: "#6e40c9",
+  blog: "#0284c7",
+  semantic_scholar: "#0891b2",
+};
+
 export function IdeaDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -58,18 +72,16 @@ export function IdeaDetailPage() {
             </div>
           </Section>
 
-          <Section label={`Research Basis — ${idea.paper_ids.length} Paper${idea.paper_ids.length !== 1 ? "s" : ""}`}>
-            {idea.paper_ids.map(pid => {
-              const isGithub = pid.startsWith("github:");
-              const slug = isGithub ? pid.slice(7) : pid;
-              const href = isGithub
-                ? `https://github.com/${slug}`
-                : `https://arxiv.org/abs/${pid}`;
-              const label = isGithub ? slug : pid;
-              const badge = isGithub ? "GitHub" : "arXiv";
+          <Section label={`Research Basis — ${idea.paper_refs.length} Source${idea.paper_refs.length !== 1 ? "s" : ""}`}>
+            {idea.paper_refs.map(ref => {
+              const sourceLabel = SOURCE_LABELS[ref.source] ?? ref.source.toUpperCase();
+              const sourceColor = SOURCE_COLORS[ref.source] ?? "var(--text-muted)";
+              const href = ref.url || (ref.source === "github"
+                ? `https://github.com/${ref.arxiv_id.replace("github:", "")}`
+                : `https://arxiv.org/abs/${ref.arxiv_id}`);
               return (
                 <a
-                  key={pid}
+                  key={ref.arxiv_id}
                   href={href}
                   target="_blank"
                   rel="noopener noreferrer"
@@ -77,15 +89,19 @@ export function IdeaDetailPage() {
                     display: "flex", alignItems: "flex-start", gap: 14,
                     background: "var(--surface)", border: "1px solid var(--border)",
                     borderRadius: 8, padding: "12px 16px", marginBottom: 8,
-                    fontSize: 14, color: "var(--text-secondary)",
                     textDecoration: "none",
                   }}
                   onMouseEnter={e => (e.currentTarget.style.borderColor = "var(--accent)")}
                   onMouseLeave={e => (e.currentTarget.style.borderColor = "var(--border)")}
                 >
-                  <span style={{ color: "var(--accent)", flexShrink: 0 }}>↗</span>
-                  <span style={{ flex: 1 }}>{label}</span>
-                  <span style={{ fontSize: 11, fontWeight: 600, color: "var(--text-muted)", flexShrink: 0, alignSelf: "center" }}>{badge}</span>
+                  <span style={{ color: "var(--accent)", flexShrink: 0, marginTop: 1 }}>↗</span>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 14, fontWeight: 500, color: "var(--text-primary)", marginBottom: 2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                      {ref.title}
+                    </div>
+                    <div style={{ fontSize: 12, color: "var(--text-muted)" }}>{ref.arxiv_id}</div>
+                  </div>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: sourceColor, flexShrink: 0, alignSelf: "center", letterSpacing: 0.4 }}>{sourceLabel}</span>
                 </a>
               );
             })}

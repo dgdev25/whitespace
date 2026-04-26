@@ -71,10 +71,13 @@ def run_daily_pipeline(
 
         _repos = github_repos if github_repos is not None else []
         raw_github: list[dict] = []
+        github_in_db = sum(1 for aid in existing_ids if aid.startswith("github:"))
         if _repos:
             prog.emit("fetch_github", f"Fetching {len(_repos)} GitHub repo(s)…", "running")
             raw_github = fetch_github_repos(repos=_repos, existing_ids=all_existing)
-            prog.emit("fetch_github", f"GitHub: {len(raw_github)} new repo(s)", "done")
+            prog.emit("fetch_github", f"GitHub: {len(raw_github)} new + {github_in_db} cached repo(s)", "done")
+        else:
+            prog.emit("fetch_github", f"GitHub: {github_in_db} repo(s) in pool", "done")
 
         raw_all = raw_arxiv + raw_blogs + raw_s2 + raw_github
         logger.info("Fetched — arXiv: %d, blogs: %d, Semantic Scholar: %d, GitHub: %d",
