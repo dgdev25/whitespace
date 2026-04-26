@@ -166,6 +166,11 @@ def run_daily_pipeline(
             analyses: list[dict] = new_analyses + cached_analyses_list
             prog.emit("analyse", f"Analysed {len(new_analyses)} new + {len(cached_analyses_list)} cached", "done")
 
+            # Build arxiv_id → title lookup for grounded paper_refs in synthesis
+            source_map: dict[str, str] = {p["arxiv_id"]: p["title"] for p in paper_dicts}
+            for p in cached_papers:
+                source_map.setdefault(p.arxiv_id, p.title)
+
         else:
             prog.emit("fetch_arxiv", "No new content — re-synthesising from existing pool", "done")
             logger.info("No new content — re-synthesising from existing pool (fast path)")
@@ -194,6 +199,9 @@ def run_daily_pipeline(
                 ]
                 analyses += _abstracts_to_pseudo_analyses(pseudo_dicts)
 
+            # Build arxiv_id → title lookup for grounded paper_refs in synthesis
+            source_map = {p.arxiv_id: p.title for p in existing_papers}
+
             prog.emit("analyse", f"{len(cached)} cached + {len(uncached[:10])} pseudo analyses", "done")
 
         # 5. Critique
@@ -208,7 +216,7 @@ def run_daily_pipeline(
 
         # 7. Synthesise
         prog.emit("synthesise", f"Synthesising {n_ideas} ideas…", "running")
-        ideas_raw = synthesise_ideas(gaps, n=n_ideas)
+        ideas_raw = synthesise_ideas(gaps, n=n_ideas, source_map=source_map)
         prog.emit("synthesise", f"{len(ideas_raw)} ideas synthesised", "done")
 
         # 8. Score
