@@ -1,5 +1,6 @@
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { api } from "../api/client";
 import { useIdea } from "../hooks/useIdeas";
 import { useSaveIdea, useUnsaveIdea, useSaved } from "../hooks/useSaved";
 import { BadgeRow } from "../components/BadgeRow";
@@ -9,6 +10,17 @@ import { ScoreBar } from "../components/ScoreBar";
 export function IdeaDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const [surprisePending, setSurprisePending] = useState(false);
+
+  const handleSurprise = async () => {
+    setSurprisePending(true);
+    try {
+      const next = await api.getSurprise();
+      navigate(`/ideas/${next.id}`);
+    } finally {
+      setSurprisePending(false);
+    }
+  };
   const { data: idea, isLoading, isError } = useIdea(id!);
   const { data: saved } = useSaved();
   const saveIdea = useSaveIdea();
@@ -103,10 +115,11 @@ export function IdeaDetailPage() {
           )}
 
           <button
-            onClick={() => navigate("/ideas/surprise")}
-            style={{ width: "100%", marginTop: 4, background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-muted)", borderRadius: 8, fontSize: 14, fontWeight: 500, padding: "8px 16px" }}
+            onClick={handleSurprise}
+            disabled={surprisePending}
+            style={{ width: "100%", marginTop: 4, background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-muted)", borderRadius: 8, fontSize: 14, fontWeight: 500, padding: "8px 16px", cursor: surprisePending ? "default" : "pointer" }}
           >
-            ↻ Surprise me
+            {surprisePending ? "…" : "↻ Surprise me"}
           </button>
         </aside>
       </div>
