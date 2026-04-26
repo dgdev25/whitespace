@@ -1,4 +1,5 @@
 import os
+import random
 import time
 from urllib.parse import quote
 
@@ -29,12 +30,12 @@ class GeminiRunner(LLMRunner):
         for attempt in range(_RETRIES + 1):
             resp = requests.post(
                 f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent",
-                params={"key": api_key},
+                params={"key": api_key},  # Google's official auth convention for this API
                 json=payload,
                 timeout=60,
             )
             if resp.status_code == 429 and attempt < _RETRIES:
-                time.sleep(2 ** attempt)
+                time.sleep(2 ** attempt + random.random())
                 continue
             resp.raise_for_status()
             break

@@ -70,12 +70,14 @@ def fetch_github_repos(repos: list[str], existing_ids: set[str]) -> list[dict]:
             continue
 
         description = meta.get("description") or ""
+        # Wrap README in delimiters to prevent prompt injection from user-controlled content
+        safe_readme = f"<readme>\n{readme}\n</readme>"
         results.append({
             "arxiv_id": uid,
             "title": f"{owner}/{repo}",
             "authors": owner,
             "abstract": description,
-            "full_text": readme,
+            "full_text": safe_readme,
             "categories": ", ".join(meta.get("topics") or []),
             "published_date": (meta.get("created_at") or "")[:10],
             "url": meta.get("html_url") or f"https://github.com/{owner}/{repo}",

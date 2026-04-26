@@ -1,4 +1,5 @@
 import os
+import random
 import time
 
 import requests
@@ -35,7 +36,7 @@ class AnthropicRunner(LLMRunner):
                 timeout=60,
             )
             if resp.status_code == 429 and attempt < _RETRIES:
-                time.sleep(2 ** attempt)
+                time.sleep(2 ** attempt + random.random())
                 continue
             resp.raise_for_status()
             break

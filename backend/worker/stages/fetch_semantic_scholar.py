@@ -26,7 +26,7 @@ _ORGS = [
 
 def _s2_id(paper_id: str) -> str:
     """Stable 32-char identifier for a Semantic Scholar paper ID."""
-    return hashlib.md5(f"s2:{paper_id}".encode()).hexdigest()
+    return hashlib.sha256(f"s2:{paper_id}".encode()).hexdigest()[:32]
 
 
 def _fetch_org(org: str, existing_ids: set[str]) -> list[dict]:

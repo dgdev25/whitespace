@@ -86,7 +86,9 @@ def load_dotenv(path: Path) -> dict[str, str]:
         line = line.strip()
         if line and not line.startswith("#") and "=" in line:
             k, _, v = line.partition("=")
-            env[k.strip()] = v.strip()
+            # Strip inline comments (space + #) from values
+            v = v.split(" #")[0].strip()
+            env[k.strip()] = v
     return env
 
 

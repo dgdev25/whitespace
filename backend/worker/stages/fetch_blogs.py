@@ -1,5 +1,6 @@
 import hashlib
 import logging
+import re
 import xml.etree.ElementTree as ET
 from datetime import date
 
@@ -47,7 +48,7 @@ _MAX_PER_SOURCE = 10
 
 def _url_id(url: str) -> str:
     """Stable 32-char identifier for a URL — fits the arxiv_id String(32) column."""
-    return hashlib.md5(url.encode()).hexdigest()
+    return hashlib.sha256(url.encode()).hexdigest()[:32]
 
 
 def _extract_text(url: str) -> str:
@@ -74,7 +75,6 @@ def _fetch_rss(source: dict, existing_ids: set[str]) -> list[dict]:
         return []
 
     papers = []
-    import re
     for entry in feed.entries[:_MAX_PER_SOURCE]:
         url = str(entry.get("link") or "")
         if not url:
@@ -105,7 +105,19 @@ def _fetch_rss(source: dict, existing_ids: set[str]) -> list[dict]:
     return papers
 
 
-def _fetch_sitemap_urls(sitemap_url: str, url_filter: str) -> list[str]:
+def _fetch_sitemap_urls(
+    sitemap_url: str,
+    url_filter: str,
+    *,
+    _visited: set[str] | None = None,
+    _depth: int = 0,
+) -> list[str]:
+    if _visited is None:
+        _visited = set()
+    if sitemap_url in _visited or _depth > 3:
+        return []
+    _visited.add(sitemap_url)
+
     try:
         resp = requests.get(sitemap_url, headers=_HEADERS, timeout=_TIMEOUT)
         resp.raise_for_status()
@@ -127,7 +139,7 @@ def _fetch_sitemap_urls(sitemap_url: str, url_filter: str) -> list[str]:
     for sitemap in root.findall("sm:sitemap", ns):
         loc = sitemap.find("sm:loc", ns)
         if loc is not None and loc.text and url_filter in (loc.text or ""):
-            nested = _fetch_sitemap_urls(loc.text.strip(), url_filter)
+            nested = _fetch_sitemap_urls(loc.text.strip(), url_filter, _visited=_visited, _depth=_depth + 1)
             urls.extend(nested)
 
     # Direct URL entries

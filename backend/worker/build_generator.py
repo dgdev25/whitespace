@@ -1,6 +1,7 @@
 import logging
 from pathlib import Path
 from sqlalchemy.orm import Session
+from sqlalchemy.orm.attributes import flag_modified
 from app.db.models.build_output import BuildOutput
 from app.db.models.idea import Idea
 from app.pipeline.json_parsing import parse_json_response
@@ -54,6 +55,7 @@ def run_build(session: Session, build_id: str, idea_id: str) -> None:
 
     try:
         build.product_sketch = generate_product_sketch(idea, runner)
+        flag_modified(build, "product_sketch")
         session.commit()
 
         build.technical_plan = generate_technical_plan(idea, runner)
