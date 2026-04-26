@@ -23,19 +23,6 @@ from worker.stages.connect import compute_connections
 logger = logging.getLogger(__name__)
 
 
-def _abstracts_to_pseudo_analyses(papers: list[dict]) -> list[dict]:
-    return [
-        {
-            "arxiv_id": p.get("arxiv_id", ""),
-            "summary": p.get("abstract", "")[:600],
-            "key_claims": [],
-            "methods": [],
-            "open_questions": [],
-            "stated_limitations": [],
-        }
-        for p in papers
-    ]
-
 
 def run_daily_pipeline(
     session: Session,
