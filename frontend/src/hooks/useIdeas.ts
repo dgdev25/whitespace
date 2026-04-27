@@ -51,6 +51,15 @@ export const useSetGithubRepos = () => {
   });
 };
 
+export const useToggleSource = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ source, enabled }: { source: string; enabled: boolean }) =>
+      api.toggleSource(source, enabled),
+    onSuccess: (data) => qc.setQueryData(["config"], data),
+  });
+};
+
 export const useSetPipelineConfig = () => {
   const qc = useQueryClient();
   return useMutation({

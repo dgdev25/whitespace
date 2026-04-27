@@ -12,6 +12,8 @@ from worker.stages.fetch import fetch_new_papers
 from worker.stages.fetch_blogs import fetch_blog_posts
 from worker.stages.fetch_github import fetch_github_repos
 from worker.stages.fetch_semantic_scholar import fetch_semantic_scholar_papers
+from worker.stages.fetch_acl_anthology import fetch_acl_anthology_papers
+from worker.stages.fetch_open_alex import fetch_open_alex_papers
 from worker.stages.analyse import analyse_papers
 from worker.stages.critique import critique_analyses
 from worker.stages.gap_map import map_gaps
@@ -32,6 +34,7 @@ def run_daily_pipeline(
     orgs: list[str] | None = None,
     categories: list[str] | None = None,
     github_repos: list[str] | None = None,
+    enabled_sources: dict[str, bool] | None = None,
 ) -> None:
     max_new = max_sources if max_sources is not None else settings.max_sources_per_run
     cached_limit = cached_analyses if cached_analyses is not None else settings.cached_analyses_count
@@ -50,38 +53,73 @@ def run_daily_pipeline(
 
     try:
         # 1. Fetch from all sources
+        _enabled = enabled_sources or {}
         existing_ids = {r[0] for r in session.execute(text("SELECT arxiv_id FROM papers")).all()}
         _orgs = orgs if orgs else [o.strip() for o in settings.arxiv_orgs.split(",")]
         _cats = categories if categories else [c.strip() for c in settings.arxiv_categories.split(",")]
 
-        prog.emit("fetch_arxiv", f"Fetching arXiv papers ({', '.join(_orgs)})…", "running")
-        raw_arxiv = fetch_new_papers(orgs=_orgs, categories=_cats, existing_ids=existing_ids)
-        prog.emit("fetch_arxiv", f"arXiv: {len(raw_arxiv)} new papers", "done")
+        raw_arxiv: list[dict] = []
+        if _enabled.get("arxiv", True):
+            prog.emit("fetch_arxiv", f"Fetching arXiv papers ({', '.join(_orgs)})…", "running")
+            raw_arxiv = fetch_new_papers(orgs=_orgs, categories=_cats, existing_ids=existing_ids)
+            prog.emit("fetch_arxiv", f"arXiv: {len(raw_arxiv)} new papers", "done")
+        else:
+            prog.emit("fetch_arxiv", "arXiv: disabled", "done")
         all_existing = existing_ids | {p["arxiv_id"] for p in raw_arxiv}
 
-        prog.emit("fetch_blogs", "Fetching blog posts (Anthropic, DeepMind, OpenAI, xAI)…", "running")
-        raw_blogs = fetch_blog_posts(existing_ids=all_existing)
-        prog.emit("fetch_blogs", f"Blogs: {len(raw_blogs)} new posts", "done")
+        raw_blogs: list[dict] = []
+        if _enabled.get("blogs", True):
+            prog.emit("fetch_blogs", "Fetching blog posts (Anthropic, DeepMind, OpenAI, xAI)…", "running")
+            raw_blogs = fetch_blog_posts(existing_ids=all_existing)
+            prog.emit("fetch_blogs", f"Blogs: {len(raw_blogs)} new posts", "done")
+        else:
+            prog.emit("fetch_blogs", "Blogs: disabled", "done")
         all_existing |= {p["arxiv_id"] for p in raw_blogs}
 
-        prog.emit("fetch_s2", "Fetching Semantic Scholar papers…", "running")
-        raw_s2 = fetch_semantic_scholar_papers(existing_ids=all_existing)
-        prog.emit("fetch_s2", f"Semantic Scholar: {len(raw_s2)} new papers", "done")
+        raw_s2: list[dict] = []
+        if _enabled.get("semantic_scholar", True):
+            prog.emit("fetch_s2", "Fetching Semantic Scholar papers…", "running")
+            raw_s2 = fetch_semantic_scholar_papers(existing_ids=all_existing)
+            prog.emit("fetch_s2", f"Semantic Scholar: {len(raw_s2)} new papers", "done")
+        else:
+            prog.emit("fetch_s2", "Semantic Scholar: disabled", "done")
         all_existing |= {p["arxiv_id"] for p in raw_s2}
 
         _repos = github_repos if github_repos is not None else []
         raw_github: list[dict] = []
         github_in_db = sum(1 for aid in existing_ids if aid.startswith("github:"))
-        if _repos:
+        if not _enabled.get("github", True):
+            prog.emit("fetch_github", "GitHub: disabled", "done")
+        elif _repos:
             prog.emit("fetch_github", f"Fetching {len(_repos)} GitHub repo(s)…", "running")
             raw_github = fetch_github_repos(repos=_repos, existing_ids=all_existing)
             prog.emit("fetch_github", f"GitHub: {len(raw_github)} new + {github_in_db} cached repo(s)", "done")
         else:
             prog.emit("fetch_github", f"GitHub: {github_in_db} repo(s) in pool", "done")
 
-        raw_all = raw_arxiv + raw_blogs + raw_s2 + raw_github
-        logger.info("Fetched — arXiv: %d, blogs: %d, Semantic Scholar: %d, GitHub: %d",
-                    len(raw_arxiv), len(raw_blogs), len(raw_s2), len(raw_github))
+        raw_acl: list[dict] = []
+        if _enabled.get("acl_anthology", True):
+            prog.emit("fetch_acl", "Fetching ACL Anthology papers…", "running")
+            raw_acl = fetch_acl_anthology_papers(existing_ids=all_existing)
+            prog.emit("fetch_acl", f"ACL Anthology: {len(raw_acl)} new papers", "done")
+        else:
+            prog.emit("fetch_acl", "ACL Anthology: disabled", "done")
+        all_existing |= {p["arxiv_id"] for p in raw_acl}
+
+        raw_oa: list[dict] = []
+        if _enabled.get("open_alex", True):
+            prog.emit("fetch_oa", "Fetching OpenAlex papers…", "running")
+            raw_oa = fetch_open_alex_papers(existing_ids=all_existing)
+            prog.emit("fetch_oa", f"OpenAlex: {len(raw_oa)} new papers", "done")
+        else:
+            prog.emit("fetch_oa", "OpenAlex: disabled", "done")
+        all_existing |= {p["arxiv_id"] for p in raw_oa}
+
+        raw_all = raw_arxiv + raw_blogs + raw_s2 + raw_github + raw_acl + raw_oa
+        logger.info(
+            "Fetched — arXiv: %d, blogs: %d, S2: %d, GitHub: %d, ACL: %d, OpenAlex: %d",
+            len(raw_arxiv), len(raw_blogs), len(raw_s2), len(raw_github), len(raw_acl), len(raw_oa),
+        )
 
         if raw_all:
             # 2. Persist all new records (capped per run)

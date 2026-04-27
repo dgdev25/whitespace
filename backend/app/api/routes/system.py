@@ -13,7 +13,7 @@ from app.api.deps import get_session
 from app.core.config import settings
 from app.db.models.user_settings import UserSettings
 from app.runners.selector import set_model_prefs
-from app.schemas.system import DataSourcesIn, GitHubReposIn, HealthOut, OrgImportIn, OrgImportStatusOut, PipelineConfigIn, PipelineRunOut, PipelineStatusOut, RunnerModelIn, RunnerOut, RunnerPreferenceIn, RunnersOut, ScheduleConfigIn, ScheduleStatusOut, SystemConfigOut
+from app.schemas.system import DataSourcesIn, GitHubReposIn, HealthOut, OrgImportIn, OrgImportStatusOut, PipelineConfigIn, PipelineRunOut, PipelineStatusOut, RunnerModelIn, RunnerOut, RunnerPreferenceIn, RunnersOut, ScheduleConfigIn, ScheduleStatusOut, SourceToggleIn, SystemConfigOut
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/system", tags=["system"])
@@ -22,6 +22,12 @@ _pipeline_lock = threading.Lock()
 _preferred_runner: str | None = None
 _active_orgs: list[str] | None = None       # None = use all from settings
 _active_categories: list[str] | None = None  # None = use all from settings
+
+_ALL_SOURCE_KEYS = ["arxiv", "semantic_scholar", "blogs", "github", "acl_anthology", "open_alex"]
+
+
+def _resolve_enabled_sources(raw: dict | None) -> dict[str, bool]:
+    return {k: (raw or {}).get(k, True) for k in _ALL_SOURCE_KEYS}
 
 # Org import state
 _org_import_lock = threading.Lock()
@@ -52,6 +58,7 @@ def _run_pipeline_sync():
         ideas = user_cfg.ideas_per_run if user_cfg else settings.ideas_per_run
         set_model_prefs(user_cfg.runner_model_prefs if user_cfg else {})
         github_repos = list(user_cfg.github_repos or []) if user_cfg else []
+        enabled_sources = _resolve_enabled_sources(user_cfg.enabled_sources if user_cfg else None)
         run_daily_pipeline(
             s,
             max_sources=max_src,
@@ -60,6 +67,7 @@ def _run_pipeline_sync():
             orgs=_active_orgs,
             categories=_active_categories,
             github_repos=github_repos,
+            enabled_sources=enabled_sources,
         )
 
 
@@ -343,6 +351,7 @@ async def _build_config_out(session: AsyncSession, all_orgs: list[str], all_cats
         active_orgs=_active_orgs if _active_orgs is not None else all_orgs,
         active_categories=_active_categories if _active_categories is not None else all_cats,
         github_repos=list(user_cfg.github_repos or []),
+        enabled_sources=_resolve_enabled_sources(user_cfg.enabled_sources),
     )
 
 
@@ -384,6 +393,23 @@ async def set_github_repos(body: GitHubReposIn, session: AsyncSession = Depends(
     user_cfg = await _get_user_settings(session)
     user_cfg.github_repos = valid
     flag_modified(user_cfg, "github_repos")
+    await session.commit()
+    all_orgs = _parse_setting(settings.arxiv_orgs)
+    all_cats = _parse_setting(settings.arxiv_categories)
+    return await _build_config_out(session, all_orgs, all_cats)
+
+
+@router.put("/sources/toggle", response_model=SystemConfigOut)
+async def toggle_source(body: SourceToggleIn, session: AsyncSession = Depends(get_session)):
+    from fastapi import HTTPException
+    from sqlalchemy.orm.attributes import flag_modified
+    if body.source not in _ALL_SOURCE_KEYS:
+        raise HTTPException(status_code=400, detail=f"Unknown source: {body.source!r}")
+    user_cfg = await _get_user_settings(session)
+    current = dict(user_cfg.enabled_sources or {})
+    current[body.source] = body.enabled
+    user_cfg.enabled_sources = current
+    flag_modified(user_cfg, "enabled_sources")
     await session.commit()
     all_orgs = _parse_setting(settings.arxiv_orgs)
     all_cats = _parse_setting(settings.arxiv_categories)

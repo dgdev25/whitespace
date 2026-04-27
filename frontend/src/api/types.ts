@@ -102,6 +102,7 @@ export interface SystemConfig {
   active_orgs: string[];
   active_categories: string[];
   github_repos: string[];
+  enabled_sources: Record<string, boolean>;
 }
 
 export interface PipelineRunResponse {

@@ -12,3 +12,4 @@ class UserSettings(Base):
     cached_analyses_count: Mapped[int] = mapped_column(Integer, nullable=False)
     runner_model_prefs: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
     github_repos: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+    enabled_sources: Mapped[dict] = mapped_column(JSON, nullable=True, default=dict)

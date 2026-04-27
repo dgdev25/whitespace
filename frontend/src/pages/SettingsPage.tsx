@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { useRunners, useSystemConfig, useSetRunner, useSetDataSources, useSchedule, useSetSchedule, useSetPipelineConfig, useSetRunnerModel, useSetGithubRepos, useImportOrg, useOrgImportStatus } from "../hooks/useIdeas";
+import { useRunners, useSystemConfig, useSetRunner, useSetDataSources, useSchedule, useSetSchedule, useSetPipelineConfig, useSetRunnerModel, useSetGithubRepos, useImportOrg, useOrgImportStatus, useToggleSource } from "../hooks/useIdeas";
 import { useThemeStore } from "../store/themeStore";
 
 const RUNNER_MODELS: Record<string, { value: string; label: string }[]> = {
@@ -40,8 +40,19 @@ const RUNNER_MODELS: Record<string, { value: string; label: string }[]> = {
   ],
 };
 
-type Tab = "runner" | "pipeline" | "sources" | "appearance";
-const VALID_TABS: Tab[] = ["runner", "pipeline", "sources", "appearance"];
+type Tab = "runner" | "pipeline" | "feeds" | "appearance";
+const VALID_TABS: Tab[] = ["runner", "pipeline", "feeds", "appearance"];
+type PipelineTab = "limits" | "schedule";
+type FeedsTab = "sources" | "arxiv" | "github";
+
+const FEED_SOURCES: { key: string; label: string; description: string }[] = [
+  { key: "arxiv", label: "arXiv", description: "Research papers from configured AI lab organizations." },
+  { key: "semantic_scholar", label: "Semantic Scholar", description: "Papers from Anthropic, DeepMind, OpenAI, xAI, Meta AI, and Microsoft Research." },
+  { key: "blogs", label: "Research Blogs", description: "Blog posts and announcements from Anthropic, DeepMind, OpenAI, and xAI." },
+  { key: "github", label: "GitHub", description: "Repository READMEs from tracked repos and imported orgs." },
+  { key: "acl_anthology", label: "ACL Anthology", description: "NLP and CL papers from ACL, EMNLP, NAACL, COLING, and more — fills gaps not covered by arXiv." },
+  { key: "open_alex", label: "OpenAlex", description: "Broad academic coverage with keyword-based search across all institutions." },
+];
 
 export function SettingsPage() {
   const { tab: tabParam } = useParams<{ tab: string }>();
@@ -59,8 +70,11 @@ export function SettingsPage() {
   const setSchedule = useSetSchedule();
   const setPipelineConfig = useSetPipelineConfig();
   const setGithubRepos = useSetGithubRepos();
+  const toggleSource = useToggleSource();
   const importOrg = useImportOrg();
   const { data: orgImport } = useOrgImportStatus();
+  const [pipelineTab, setPipelineTab] = useState<PipelineTab>("limits");
+  const [feedsTab, setFeedsTab] = useState<FeedsTab>("sources");
   const [orgInput, setOrgInput] = useState<string>("");
   const [intervalInput, setIntervalInput] = useState<string>("");
   const [ideasPerRunInput, setIdeasPerRunInput] = useState<string>("");
@@ -92,7 +106,7 @@ export function SettingsPage() {
       <div style={{ display: "flex", borderBottom: "1px solid var(--border)", marginBottom: 32 }}>
         <button style={tabStyle("runner")} onClick={() => goTab("runner")}>Runner</button>
         <button style={tabStyle("pipeline")} onClick={() => goTab("pipeline")}>Pipeline</button>
-        <button style={tabStyle("sources")} onClick={() => goTab("sources")}>Sources</button>
+        <button style={tabStyle("feeds")} onClick={() => goTab("feeds")}>Feeds</button>
         <button style={tabStyle("appearance")} onClick={() => goTab("appearance")}>Appearance</button>
       </div>
 
@@ -167,262 +181,317 @@ export function SettingsPage() {
       {/* Pipeline tab */}
       {tab === "pipeline" && (
         <>
-          <SettingsCard title="Run Limits" description="Control how many ideas are generated and how many sources are used per pipeline run.">
-            {config ? (
-              <>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 20, marginBottom: 20 }}>
-                  <div>
-                    <label style={{ display: "block", fontSize: 13, fontWeight: 500, color: "var(--text-secondary)", marginBottom: 8 }}>
-                      Ideas per Run
-                    </label>
-                    <input
-                      type="number" min={1}
-                      value={ideasPerRunInput || config.ideas_per_run}
-                      onChange={e => setIdeasPerRunInput(e.target.value)}
-                      style={inputStyle}
-                    />
-                  </div>
-                  <div>
-                    <label style={{ display: "block", fontSize: 13, fontWeight: 500, color: "var(--text-secondary)", marginBottom: 8 }}>
-                      Max New Sources per Run
-                    </label>
-                    <input
-                      type="number" min={1}
-                      value={maxSourcesInput || config.max_sources_per_run}
-                      onChange={e => setMaxSourcesInput(e.target.value)}
-                      style={inputStyle}
-                    />
-                  </div>
-                  <div>
-                    <label style={{ display: "block", fontSize: 13, fontWeight: 500, color: "var(--text-secondary)", marginBottom: 8 }}>
-                      Cached Analyses to Load
-                    </label>
-                    <input
-                      type="number" min={0}
-                      value={cachedCountInput || config.cached_analyses_count}
-                      onChange={e => setCachedCountInput(e.target.value)}
-                      style={inputStyle}
-                    />
-                  </div>
-                </div>
-                <button
-                  onClick={() => {
-                    const ideas = Math.max(1, parseInt(ideasPerRunInput || String(config.ideas_per_run), 10));
-                    const maxSrc = Math.max(1, parseInt(maxSourcesInput || String(config.max_sources_per_run), 10));
-                    const cached = Math.max(0, parseInt(cachedCountInput || String(config.cached_analyses_count), 10));
-                    setPipelineConfig.mutate({ ideas_per_run: ideas, max_sources_per_run: maxSrc, cached_analyses_count: cached });
-                    setIdeasPerRunInput(""); setMaxSourcesInput(""); setCachedCountInput("");
-                  }}
-                  disabled={setPipelineConfig.isPending}
-                  style={primaryButtonStyle}
-                >
-                  {setPipelineConfig.isPending ? "Saving…" : "Save"}
-                </button>
-              </>
-            ) : <p style={{ color: "var(--text-muted)", fontSize: 14 }}>Loading...</p>}
-          </SettingsCard>
+          <SubTabBar<PipelineTab>
+            tabs={[
+              { key: "limits", label: "Limits" },
+              { key: "schedule", label: "Schedule" },
+            ]}
+            active={pipelineTab}
+            onChange={setPipelineTab}
+          />
 
-          <SettingsCard title="Auto-Run Schedule" description="Run the pipeline automatically at a fixed interval in addition to manual refreshes.">
-            {schedule ? (
-              <>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
-                  <div>
-                    <p style={{ fontSize: 14, fontWeight: 500, color: "var(--text-primary)" }}>
-                      {schedule.enabled ? "Enabled" : "Disabled"}
-                    </p>
-                    {schedule.enabled && schedule.next_run_at && (
-                      <p style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2 }}>
-                        Next run: {new Date(schedule.next_run_at).toLocaleTimeString()}
-                      </p>
-                    )}
-                  </div>
-                  <Toggle
-                    on={schedule.enabled}
-                    disabled={setSchedule.isPending}
-                    onToggle={() => setSchedule.mutate({ enabled: !schedule.enabled, interval_minutes: schedule.interval_minutes })}
-                  />
-                </div>
-                <div style={{ display: "flex", alignItems: "flex-end", gap: 12 }}>
-                  <div style={{ flex: 1 }}>
-                    <label style={{ display: "block", fontSize: 13, fontWeight: 500, color: "var(--text-secondary)", marginBottom: 8 }}>
-                      Interval (minutes)
-                    </label>
-                    <input
-                      type="number" min={5}
-                      value={intervalInput || schedule.interval_minutes}
-                      onChange={e => setIntervalInput(e.target.value)}
-                      style={inputStyle}
-                    />
+          {pipelineTab === "limits" && (
+            <SettingsCard title="Run Limits" description="Control how many ideas are generated and how many sources are used per pipeline run.">
+              {config ? (
+                <>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 20, marginBottom: 20 }}>
+                    <div>
+                      <label style={{ display: "block", fontSize: 13, fontWeight: 500, color: "var(--text-secondary)", marginBottom: 8 }}>
+                        Ideas per Run
+                      </label>
+                      <input
+                        type="number" min={1}
+                        value={ideasPerRunInput || config.ideas_per_run}
+                        onChange={e => setIdeasPerRunInput(e.target.value)}
+                        style={inputStyle}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ display: "block", fontSize: 13, fontWeight: 500, color: "var(--text-secondary)", marginBottom: 8 }}>
+                        Max New Sources per Run
+                      </label>
+                      <input
+                        type="number" min={1}
+                        value={maxSourcesInput || config.max_sources_per_run}
+                        onChange={e => setMaxSourcesInput(e.target.value)}
+                        style={inputStyle}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ display: "block", fontSize: 13, fontWeight: 500, color: "var(--text-secondary)", marginBottom: 8 }}>
+                        Cached Analyses to Load
+                      </label>
+                      <input
+                        type="number" min={0}
+                        value={cachedCountInput || config.cached_analyses_count}
+                        onChange={e => setCachedCountInput(e.target.value)}
+                        style={inputStyle}
+                      />
+                    </div>
                   </div>
                   <button
                     onClick={() => {
-                      const mins = Math.max(5, parseInt(intervalInput || String(schedule.interval_minutes), 10));
-                      setSchedule.mutate({ enabled: schedule.enabled, interval_minutes: mins });
-                      setIntervalInput("");
+                      const ideas = Math.max(1, parseInt(ideasPerRunInput || String(config.ideas_per_run), 10));
+                      const maxSrc = Math.max(1, parseInt(maxSourcesInput || String(config.max_sources_per_run), 10));
+                      const cached = Math.max(0, parseInt(cachedCountInput || String(config.cached_analyses_count), 10));
+                      setPipelineConfig.mutate({ ideas_per_run: ideas, max_sources_per_run: maxSrc, cached_analyses_count: cached });
+                      setIdeasPerRunInput(""); setMaxSourcesInput(""); setCachedCountInput("");
                     }}
-                    disabled={setSchedule.isPending}
+                    disabled={setPipelineConfig.isPending}
                     style={primaryButtonStyle}
                   >
-                    Apply
+                    {setPipelineConfig.isPending ? "Saving…" : "Save"}
                   </button>
-                </div>
-                <p style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 10 }}>
-                  Minimum 5 minutes. The pipeline skips if already running.
-                </p>
-              </>
-            ) : <p style={{ color: "var(--text-muted)", fontSize: 14 }}>Loading...</p>}
-          </SettingsCard>
-
-          {config && (
-            <SettingsCard title="Daily Schedule">
-              <FormField label="UTC Hour" value={String(config.schedule_hour)} />
-              <p style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 8 }}>
-                Edit in <code style={{ background: "var(--bg)", padding: "2px 6px", borderRadius: 4, fontSize: 11 }}>backend/.env</code> and restart to change.
-              </p>
+                </>
+              ) : <p style={{ color: "var(--text-muted)", fontSize: 14 }}>Loading...</p>}
             </SettingsCard>
+          )}
+
+          {pipelineTab === "schedule" && (
+            <>
+              <SettingsCard title="Auto-Run Schedule" description="Run the pipeline automatically at a fixed interval in addition to manual refreshes.">
+                {schedule ? (
+                  <>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
+                      <div>
+                        <p style={{ fontSize: 14, fontWeight: 500, color: "var(--text-primary)" }}>
+                          {schedule.enabled ? "Enabled" : "Disabled"}
+                        </p>
+                        {schedule.enabled && schedule.next_run_at && (
+                          <p style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2 }}>
+                            Next run: {new Date(schedule.next_run_at).toLocaleTimeString()}
+                          </p>
+                        )}
+                      </div>
+                      <Toggle
+                        on={schedule.enabled}
+                        disabled={setSchedule.isPending}
+                        onToggle={() => setSchedule.mutate({ enabled: !schedule.enabled, interval_minutes: schedule.interval_minutes })}
+                      />
+                    </div>
+                    <div style={{ display: "flex", alignItems: "flex-end", gap: 12 }}>
+                      <div style={{ flex: 1 }}>
+                        <label style={{ display: "block", fontSize: 13, fontWeight: 500, color: "var(--text-secondary)", marginBottom: 8 }}>
+                          Interval (minutes)
+                        </label>
+                        <input
+                          type="number" min={5}
+                          value={intervalInput || schedule.interval_minutes}
+                          onChange={e => setIntervalInput(e.target.value)}
+                          style={inputStyle}
+                        />
+                      </div>
+                      <button
+                        onClick={() => {
+                          const mins = Math.max(5, parseInt(intervalInput || String(schedule.interval_minutes), 10));
+                          setSchedule.mutate({ enabled: schedule.enabled, interval_minutes: mins });
+                          setIntervalInput("");
+                        }}
+                        disabled={setSchedule.isPending}
+                        style={primaryButtonStyle}
+                      >
+                        Apply
+                      </button>
+                    </div>
+                    <p style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 10 }}>
+                      Minimum 5 minutes. The pipeline skips if already running.
+                    </p>
+                  </>
+                ) : <p style={{ color: "var(--text-muted)", fontSize: 14 }}>Loading...</p>}
+              </SettingsCard>
+
+              {config && (
+                <SettingsCard title="Daily Schedule">
+                  <FormField label="UTC Hour" value={String(config.schedule_hour)} />
+                  <p style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 8 }}>
+                    Edit in <code style={{ background: "var(--bg)", padding: "2px 6px", borderRadius: 4, fontSize: 11 }}>backend/.env</code> and restart to change.
+                  </p>
+                </SettingsCard>
+              )}
+            </>
           )}
         </>
       )}
 
-      {/* Sources tab */}
-      {tab === "sources" && (
+      {/* Feeds tab */}
+      {tab === "feeds" && (
         <>
-          <SettingsCard title="arXiv" description="Toggle which organizations and categories to include in the next pipeline run.">
-            {config ? (
-              <>
-                <ToggleTagSection
-                  label="AI Lab Organizations"
-                  all={config.arxiv_orgs}
-                  active={config.active_orgs}
-                  onToggle={(tag) => {
-                    const next = config.active_orgs.includes(tag)
-                      ? config.active_orgs.filter(o => o !== tag)
-                      : [...config.active_orgs, tag];
-                    setDataSources.mutate({ orgs: next, categories: config.active_categories });
-                  }}
-                />
-                <ToggleTagSection
-                  label="Categories"
-                  all={config.arxiv_categories}
-                  active={config.active_categories}
-                  onToggle={(tag) => {
-                    const next = config.active_categories.includes(tag)
-                      ? config.active_categories.filter(c => c !== tag)
-                      : [...config.active_categories, tag];
-                    setDataSources.mutate({ orgs: config.active_orgs, categories: next });
-                  }}
-                />
-              </>
-            ) : <p style={{ color: "var(--text-muted)", fontSize: 14 }}>Loading...</p>}
-          </SettingsCard>
+          <SubTabBar<FeedsTab>
+            tabs={[
+              { key: "sources", label: "Sources" },
+              { key: "arxiv", label: "arXiv" },
+              { key: "github", label: "GitHub" },
+            ]}
+            active={feedsTab}
+            onChange={setFeedsTab}
+          />
 
-          <SettingsCard title="Import GitHub User or Org" description="Scan all public repos from a GitHub user or org and cache their READMEs. Only new repos are fetched — existing ones are skipped.">
-            <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
-              <input
-                type="text"
-                placeholder="e.g. ruvnet"
-                value={orgInput}
-                onChange={e => setOrgInput(e.target.value)}
-                onKeyDown={e => {
-                  if (e.key === "Enter" && orgInput.trim() && !orgImport?.running) {
-                    importOrg.mutate(orgInput.trim());
-                  }
-                }}
-                disabled={orgImport?.running}
-                style={{ ...inputStyle, flex: 1 }}
-              />
-              <button
-                onClick={() => { if (orgInput.trim()) importOrg.mutate(orgInput.trim()); }}
-                disabled={!orgInput.trim() || orgImport?.running || importOrg.isPending}
-                style={primaryButtonStyle}
-              >
-                {orgImport?.running ? "Scanning…" : "Scan"}
-              </button>
-            </div>
-            {orgImport && orgImport.message && (
-              <div style={{
-                padding: "10px 14px", borderRadius: 8,
-                background: orgImport.running ? "var(--bg)" : (orgImport.message.startsWith("Error") ? "rgba(220,53,69,0.08)" : "rgba(40,167,69,0.08)"),
-                border: `1px solid ${orgImport.running ? "var(--border)" : (orgImport.message.startsWith("Error") ? "rgba(220,53,69,0.3)" : "rgba(40,167,69,0.3)")}`,
-              }}>
-                <p style={{ fontSize: 13, color: "var(--text-secondary)", margin: 0 }}>
-                  {orgImport.message}
-                </p>
-                {orgImport.running && orgImport.total !== null && (
-                  <div style={{ marginTop: 8, height: 4, borderRadius: 2, background: "var(--border)", overflow: "hidden" }}>
-                    <div style={{
-                      height: "100%", borderRadius: 2, background: "var(--accent)",
-                      width: `${Math.round((orgImport.scanned / orgImport.total) * 100)}%`,
-                      transition: "width 0.3s",
-                    }} />
-                  </div>
-                )}
-              </div>
-            )}
-            <p style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 10 }}>
-              Set <code style={{ background: "var(--bg)", padding: "1px 5px", borderRadius: 4, fontSize: 11 }}>GITHUB_TOKEN</code> in <code style={{ background: "var(--bg)", padding: "1px 5px", borderRadius: 4, fontSize: 11 }}>backend/.env</code> to avoid rate limits on large orgs.
-            </p>
-          </SettingsCard>
+          {feedsTab === "sources" && (
+            <SettingsCard title="Feed Sources" description="Toggle which data sources are active. Disabled sources are skipped during pipeline runs.">
+              {config ? (
+                <div>
+                  {FEED_SOURCES.map((src, i) => {
+                    const isEnabled = config.enabled_sources[src.key] ?? true;
+                    return (
+                      <div key={src.key} style={{
+                        padding: "16px 0",
+                        borderBottom: i < FEED_SOURCES.length - 1 ? "1px solid var(--border)" : "none",
+                      }}>
+                        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16 }}>
+                          <div style={{ flex: 1 }}>
+                            <p style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)", margin: "0 0 3px" }}>{src.label}</p>
+                            <p style={{ fontSize: 13, color: "var(--text-muted)", margin: 0, lineHeight: 1.5 }}>{src.description}</p>
+                          </div>
+                          <Toggle
+                            on={isEnabled}
+                            disabled={toggleSource.isPending}
+                            onToggle={() => toggleSource.mutate({ source: src.key, enabled: !isEnabled })}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : <p style={{ color: "var(--text-muted)", fontSize: 14 }}>Loading...</p>}
+            </SettingsCard>
+          )}
 
-          <SettingsCard title="GitHub Repositories" description="Add public GitHub repos as inspiration sources. Only README and description are used — no code is read.">
-            {config ? (
-              <>
-                <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+          {feedsTab === "arxiv" && (
+            <SettingsCard title="arXiv Configuration" description="Filter which organizations and categories to pull from arXiv.">
+              {config ? (
+                <>
+                  <ToggleTagSection
+                    label="AI Lab Organizations"
+                    all={config.arxiv_orgs}
+                    active={config.active_orgs}
+                    onToggle={(tag) => {
+                      const next = config.active_orgs.includes(tag)
+                        ? config.active_orgs.filter(o => o !== tag)
+                        : [...config.active_orgs, tag];
+                      setDataSources.mutate({ orgs: next, categories: config.active_categories });
+                    }}
+                  />
+                  <ToggleTagSection
+                    label="Categories"
+                    all={config.arxiv_categories}
+                    active={config.active_categories}
+                    onToggle={(tag) => {
+                      const next = config.active_categories.includes(tag)
+                        ? config.active_categories.filter(c => c !== tag)
+                        : [...config.active_categories, tag];
+                      setDataSources.mutate({ orgs: config.active_orgs, categories: next });
+                    }}
+                  />
+                </>
+              ) : <p style={{ color: "var(--text-muted)", fontSize: 14 }}>Loading...</p>}
+            </SettingsCard>
+          )}
+
+          {feedsTab === "github" && (
+            <SettingsCard title="GitHub Configuration" description="Add repos as sources and import all public repos from a user or org.">
+              <div style={{ marginBottom: 20 }}>
+                <p style={{ fontSize: 13, fontWeight: 500, color: "var(--text-secondary)", marginBottom: 10 }}>Import User or Org</p>
+                <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
                   <input
                     type="text"
-                    placeholder="owner/repo"
-                    value={githubInput}
-                    onChange={e => setGithubInput(e.target.value)}
+                    placeholder="e.g. ruvnet"
+                    value={orgInput}
+                    onChange={e => setOrgInput(e.target.value)}
                     onKeyDown={e => {
-                      if (e.key === "Enter") {
+                      if (e.key === "Enter" && orgInput.trim() && !orgImport?.running)
+                        importOrg.mutate(orgInput.trim());
+                    }}
+                    disabled={orgImport?.running}
+                    style={{ ...inputStyle, flex: 1 }}
+                  />
+                  <button
+                    onClick={() => { if (orgInput.trim()) importOrg.mutate(orgInput.trim()); }}
+                    disabled={!orgInput.trim() || orgImport?.running || importOrg.isPending}
+                    style={primaryButtonStyle}
+                  >
+                    {orgImport?.running ? "Scanning…" : "Scan"}
+                  </button>
+                </div>
+                {orgImport?.message && (
+                  <div style={{
+                    padding: "10px 14px", borderRadius: 8,
+                    background: orgImport.running ? "var(--bg)" : (orgImport.message.startsWith("Error") ? "rgba(220,53,69,0.08)" : "rgba(40,167,69,0.08)"),
+                    border: `1px solid ${orgImport.running ? "var(--border)" : (orgImport.message.startsWith("Error") ? "rgba(220,53,69,0.3)" : "rgba(40,167,69,0.3)")}`,
+                  }}>
+                    <p style={{ fontSize: 13, color: "var(--text-secondary)", margin: 0 }}>{orgImport.message}</p>
+                    {orgImport.running && orgImport.total !== null && (
+                      <div style={{ marginTop: 8, height: 4, borderRadius: 2, background: "var(--border)", overflow: "hidden" }}>
+                        <div style={{
+                          height: "100%", borderRadius: 2, background: "var(--accent)",
+                          width: `${Math.round((orgImport.scanned / orgImport.total) * 100)}%`,
+                          transition: "width 0.3s",
+                        }} />
+                      </div>
+                    )}
+                  </div>
+                )}
+                <p style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 8 }}>
+                  Set <code style={{ background: "var(--bg)", padding: "1px 5px", borderRadius: 4, fontSize: 11 }}>GITHUB_TOKEN</code> in <code style={{ background: "var(--bg)", padding: "1px 5px", borderRadius: 4, fontSize: 11 }}>backend/.env</code> to avoid rate limits.
+                </p>
+              </div>
+              {config && (
+                <div>
+                  <p style={{ fontSize: 13, fontWeight: 500, color: "var(--text-secondary)", marginBottom: 10 }}>Tracked Repositories</p>
+                  <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+                    <input
+                      type="text"
+                      placeholder="owner/repo"
+                      value={githubInput}
+                      onChange={e => setGithubInput(e.target.value)}
+                      onKeyDown={e => {
+                        if (e.key === "Enter") {
+                          const slug = githubInput.trim();
+                          if (slug && slug.includes("/") && !config.github_repos.includes(slug)) {
+                            setGithubRepos.mutate([...config.github_repos, slug]);
+                            setGithubInput("");
+                          }
+                        }
+                      }}
+                      style={{ ...inputStyle, flex: 1 }}
+                    />
+                    <button
+                      onClick={() => {
                         const slug = githubInput.trim();
                         if (slug && slug.includes("/") && !config.github_repos.includes(slug)) {
                           setGithubRepos.mutate([...config.github_repos, slug]);
                           setGithubInput("");
                         }
-                      }
-                    }}
-                    style={{ ...inputStyle, flex: 1 }}
-                  />
-                  <button
-                    onClick={() => {
-                      const slug = githubInput.trim();
-                      if (slug && slug.includes("/") && !config.github_repos.includes(slug)) {
-                        setGithubRepos.mutate([...config.github_repos, slug]);
-                        setGithubInput("");
-                      }
-                    }}
-                    disabled={setGithubRepos.isPending}
-                    style={primaryButtonStyle}
-                  >
-                    Add
-                  </button>
-                </div>
-                {config.github_repos.length > 0 ? (
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                    {config.github_repos.map(repo => (
-                      <span key={repo} style={{
-                        display: "inline-flex", alignItems: "center", gap: 6,
-                        background: "var(--bg)", border: "1px solid var(--border)",
-                        padding: "5px 10px 5px 14px", borderRadius: 999,
-                        fontSize: 13, color: "var(--text-primary)",
-                      }}>
-                        {repo}
-                        <button
-                          onClick={() => setGithubRepos.mutate(config.github_repos.filter(r => r !== repo))}
-                          disabled={setGithubRepos.isPending}
-                          style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", fontSize: 16, lineHeight: 1, padding: "0 2px" }}
-                          aria-label={`Remove ${repo}`}
-                        >×</button>
-                      </span>
-                    ))}
+                      }}
+                      disabled={setGithubRepos.isPending}
+                      style={primaryButtonStyle}
+                    >Add</button>
                   </div>
-                ) : (
-                  <p style={{ fontSize: 13, color: "var(--text-muted)" }}>No repos added yet.</p>
-                )}
-              </>
-            ) : <p style={{ color: "var(--text-muted)", fontSize: 14 }}>Loading...</p>}
-          </SettingsCard>
+                  {config.github_repos.length > 0 ? (
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                      {config.github_repos.map(repo => (
+                        <span key={repo} style={{
+                          display: "inline-flex", alignItems: "center", gap: 6,
+                          background: "var(--bg)", border: "1px solid var(--border)",
+                          padding: "5px 10px 5px 14px", borderRadius: 999,
+                          fontSize: 13, color: "var(--text-primary)",
+                        }}>
+                          {repo}
+                          <button
+                            onClick={() => setGithubRepos.mutate(config.github_repos.filter(r => r !== repo))}
+                            disabled={setGithubRepos.isPending}
+                            style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", fontSize: 16, lineHeight: 1, padding: "0 2px" }}
+                            aria-label={`Remove ${repo}`}
+                          >×</button>
+                        </span>
+                      ))}
+                    </div>
+                  ) : (
+                    <p style={{ fontSize: 13, color: "var(--text-muted)" }}>No repos added yet.</p>
+                  )}
+                </div>
+              )}
+            </SettingsCard>
+          )}
         </>
       )}
 
@@ -465,6 +534,37 @@ const primaryButtonStyle: React.CSSProperties = {
   background: "var(--accent)", color: "white", border: "none",
   fontSize: 14, fontWeight: 500, cursor: "pointer", whiteSpace: "nowrap",
 };
+
+function SubTabBar<T extends string>({ tabs, active, onChange }: {
+  tabs: { key: T; label: string }[];
+  active: T;
+  onChange: (t: T) => void;
+}) {
+  return (
+    <div style={{ display: "flex", gap: 6, marginBottom: 20 }}>
+      {tabs.map(t => (
+        <button
+          key={t.key}
+          onClick={() => onChange(t.key)}
+          style={{
+            background: active === t.key ? "var(--accent)" : "var(--surface)",
+            border: active === t.key ? "1px solid var(--accent)" : "1px solid var(--border)",
+            borderRadius: 999,
+            padding: "5px 16px",
+            fontSize: 13,
+            fontWeight: active === t.key ? 600 : 400,
+            color: active === t.key ? "white" : "var(--text-muted)",
+            cursor: "pointer",
+            transition: "all 0.15s",
+            whiteSpace: "nowrap",
+          }}
+        >
+          {t.label}
+        </button>
+      ))}
+    </div>
+  );
+}
 
 function SettingsCard({ title, description, children }: { title: string; description?: string; children: React.ReactNode }) {
   return (
