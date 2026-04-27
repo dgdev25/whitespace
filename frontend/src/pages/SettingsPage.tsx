@@ -107,11 +107,14 @@ export function SettingsPage() {
   const [maxSourcesInput, setMaxSourcesInput] = useState<string>("");
   const [cachedCountInput, setCachedCountInput] = useState<string>("");
   const [githubInput, setGithubInput] = useState<string>("");
+  const [repoPage, setRepoPage] = useState(0);
+  const REPOS_PER_PAGE = 10;
   const qc = useQueryClient();
   const prevOrgRunning = useRef(false);
   useEffect(() => {
     if (prevOrgRunning.current && orgImport && !orgImport.running) {
       qc.invalidateQueries({ queryKey: ["config"] });
+      setRepoPage(0);
     }
     prevOrgRunning.current = orgImport?.running ?? false;
   }, [orgImport?.running]);
@@ -454,38 +457,64 @@ export function SettingsPage() {
                       style={primaryButtonStyle}
                     >Add</button>
                   </div>
-                  {config.github_repos.length > 0 ? (
-                    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                      {config.github_repos.map(repo => (
-                        <div key={repo} style={{
-                          display: "flex", alignItems: "center", justifyContent: "space-between",
-                          background: "var(--bg)", border: "1px solid var(--border)",
-                          padding: "10px 14px", borderRadius: 8,
-                        }}>
-                          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                            <span style={{ fontSize: 15, color: "var(--text-muted)" }}>⌥</span>
-                            <div>
-                              <p style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)", margin: 0 }}>{repo}</p>
-                              <a
-                                href={`https://github.com/${repo}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                style={{ fontSize: 11, color: "var(--text-muted)", textDecoration: "none" }}
-                              >
-                                github.com/{repo} ↗
-                              </a>
+                  {config.github_repos.length > 0 ? (() => {
+                    const totalPages = Math.ceil(config.github_repos.length / REPOS_PER_PAGE);
+                    const safePage = Math.min(repoPage, totalPages - 1);
+                    const pageRepos = config.github_repos.slice(safePage * REPOS_PER_PAGE, (safePage + 1) * REPOS_PER_PAGE);
+                    return (
+                      <div>
+                        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                          {pageRepos.map(repo => (
+                            <div key={repo} style={{
+                              display: "flex", alignItems: "center", justifyContent: "space-between",
+                              background: "var(--bg)", border: "1px solid var(--border)",
+                              padding: "10px 14px", borderRadius: 8,
+                            }}>
+                              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                                <span style={{ fontSize: 15, color: "var(--text-muted)" }}>⌥</span>
+                                <div>
+                                  <p style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)", margin: 0 }}>{repo}</p>
+                                  <a
+                                    href={`https://github.com/${repo}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    style={{ fontSize: 11, color: "var(--text-muted)", textDecoration: "none" }}
+                                  >
+                                    github.com/{repo} ↗
+                                  </a>
+                                </div>
+                              </div>
+                              <button
+                                onClick={() => setGithubRepos.mutate(config.github_repos.filter(r => r !== repo))}
+                                disabled={setGithubRepos.isPending}
+                                style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", fontSize: 18, lineHeight: 1, padding: "0 4px" }}
+                                aria-label={`Remove ${repo}`}
+                              >×</button>
+                            </div>
+                          ))}
+                        </div>
+                        {totalPages > 1 && (
+                          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 12 }}>
+                            <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
+                              {safePage * REPOS_PER_PAGE + 1}–{Math.min((safePage + 1) * REPOS_PER_PAGE, config.github_repos.length)} of {config.github_repos.length} repos
+                            </span>
+                            <div style={{ display: "flex", gap: 6 }}>
+                              <button
+                                onClick={() => setRepoPage(p => Math.max(0, p - 1))}
+                                disabled={safePage === 0}
+                                style={{ padding: "4px 10px", fontSize: 12, borderRadius: 6, border: "1px solid var(--border)", background: "var(--bg)", color: "var(--text-secondary)", cursor: safePage === 0 ? "default" : "pointer", opacity: safePage === 0 ? 0.4 : 1 }}
+                              >← Prev</button>
+                              <button
+                                onClick={() => setRepoPage(p => Math.min(totalPages - 1, p + 1))}
+                                disabled={safePage >= totalPages - 1}
+                                style={{ padding: "4px 10px", fontSize: 12, borderRadius: 6, border: "1px solid var(--border)", background: "var(--bg)", color: "var(--text-secondary)", cursor: safePage >= totalPages - 1 ? "default" : "pointer", opacity: safePage >= totalPages - 1 ? 0.4 : 1 }}
+                              >Next →</button>
                             </div>
                           </div>
-                          <button
-                            onClick={() => setGithubRepos.mutate(config.github_repos.filter(r => r !== repo))}
-                            disabled={setGithubRepos.isPending}
-                            style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", fontSize: 18, lineHeight: 1, padding: "0 4px" }}
-                            aria-label={`Remove ${repo}`}
-                          >×</button>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
+                        )}
+                      </div>
+                    );
+                  })() : (
                     <div style={{ padding: "24px 0", textAlign: "center", color: "var(--text-muted)", fontSize: 13 }}>
                       No reference repos yet. Add repos above and they'll be read on each pipeline run.
                     </div>

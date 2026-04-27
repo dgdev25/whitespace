@@ -266,13 +266,24 @@ def _import_handle_sync(handle: str) -> None:
     from app.db.models.paper import Paper
     from app.db.models.user_settings import UserSettings
     from worker.db import SessionLocal
-    from worker.stages.fetch_github import fetch_handle_repos
+    from worker.stages.fetch_github import fetch_handle_repos, _list_handle_repos
 
     try:
         with SessionLocal() as session:
             existing_ids = {r[0] for r in session.execute(sql_text("SELECT arxiv_id FROM papers")).all()}
 
+            # Collect ALL repo slugs from the org/user — used for the reference list.
+            # This is separate from Papers creation: repos already in the DB or without
+            # READMEs are still valid references for future pipeline runs.
+            all_repo_meta = _list_handle_repos(handle)
+            all_slugs = [
+                f"{(r.get('owner') or {}).get('login', handle)}/{r['name']}"
+                for r in all_repo_meta
+            ]
+
             def _progress(scanned: int, total: int) -> None:
+                # No lock here — the import lock is already held (acquired by the route
+                # handler before spawning this thread). Taking it again would deadlock.
                 _org_import_state.update({"scanned": scanned, "total": total,
                                           "message": f"Scanning {scanned} of {total}…"})
 
@@ -290,31 +301,29 @@ def _import_handle_sync(handle: str) -> None:
                     source="github",
                 ))
 
-            # Add imported repo slugs to UserSettings.github_repos so they appear in the UI
-            # and are re-fetched on future pipeline runs.
-            new_slugs = [p["title"] for p in repos]  # title = "owner/repo"
-            if new_slugs:
-                user_cfg = session.get(UserSettings, 1)
-                if user_cfg is None:
-                    user_cfg = UserSettings(
-                        id=1, ideas_per_run=8, max_sources_per_run=40,
-                        cached_analyses_count=30, runner_model_prefs={},
-                        github_repos=[], enabled_sources={},
-                    )
-                    session.add(user_cfg)
-                existing_slugs = list(user_cfg.github_repos or [])
-                merged = existing_slugs + [s for s in new_slugs if s not in existing_slugs]
-                user_cfg.github_repos = merged
-                flag_modified(user_cfg, "github_repos")
+            # Merge ALL slugs (not just newly-fetched ones) into UserSettings.github_repos.
+            # Repos already imported as Papers or lacking READMEs are still useful references.
+            user_cfg = session.get(UserSettings, 1)
+            if user_cfg is None:
+                user_cfg = UserSettings(
+                    id=1, ideas_per_run=8, max_sources_per_run=40,
+                    cached_analyses_count=30, runner_model_prefs={},
+                    github_repos=[], enabled_sources={},
+                )
+                session.add(user_cfg)
+            existing_slugs = set(user_cfg.github_repos or [])
+            merged = list(existing_slugs) + [s for s in all_slugs if s not in existing_slugs]
+            user_cfg.github_repos = merged
+            flag_modified(user_cfg, "github_repos")
 
             session.commit()
             _org_import_state.update({
                 "running": False,
                 "imported": len(repos),
-                "message": f"Done — {len(repos)} new repo(s) added from {handle}",
+                "message": f"Done — {len(all_slugs)} repo(s) added from {handle} ({len(repos)} new)",
             })
     except Exception as exc:
-        logger.error("Org import failed: %s", exc)
+        logger.error("Org import failed: %s", exc, exc_info=True)
         _org_import_state.update({"running": False, "message": f"Error: {exc}"})
     finally:
         _org_import_lock.release()
