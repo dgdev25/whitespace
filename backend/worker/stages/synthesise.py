@@ -9,7 +9,13 @@ logger = logging.getLogger(__name__)
 _PROMPT = (Path(__file__).parent.parent / "prompts" / "synthesis.md").read_text()
 
 
-def synthesise_ideas(gaps: dict, n: int, source_map: dict[str, str] | None = None, runner=None) -> list[dict]:
+def synthesise_ideas(
+    gaps: dict,
+    n: int,
+    source_map: dict[str, str] | None = None,
+    runner=None,
+    focus_context: str | None = None,
+) -> list[dict]:
     if runner is None:
         runner = select_runner_or_raise(_default_runners())
     sources = [{"arxiv_id": k, "title": v} for k, v in (source_map or {}).items()]
@@ -19,6 +25,8 @@ def synthesise_ideas(gaps: dict, n: int, source_map: dict[str, str] | None = Non
         .replace("{{gaps}}", json.dumps(gaps, indent=2))
         .replace("{{sources}}", json.dumps(sources, indent=2))
     )
+    if focus_context:
+        prompt = f"RESEARCH FOCUS CONTEXT:\n{focus_context}\n\n" + prompt
     response = runner.run(prompt)
     data = parse_llm_json(response)
     if not isinstance(data, list):

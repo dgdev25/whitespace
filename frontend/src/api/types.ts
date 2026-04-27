@@ -117,6 +117,76 @@ export interface HistoryGroup {
   ideas: IdeaSummary[];
 }
 
+export interface ProjectSourceConfig {
+  enabled_sources?: Record<string, boolean>;
+  orgs?: string[] | null;
+  categories?: string[] | null;
+  github_repos?: string[];
+}
+
+export interface ProjectPipelineConfig {
+  ideas_per_run?: number;
+  max_sources_per_run?: number;
+  cached_analyses_count?: number;
+  interval_minutes?: number | null;
+}
+
+export interface ProjectRun {
+  id: number;
+  project_id: number;
+  status: "running" | "done" | "error";
+  stages: { name: string; label: string; message: string; status: string }[];
+  papers_fetched: number;
+  ideas_generated: number;
+  error: string | null;
+  started_at: string;
+  completed_at: string | null;
+}
+
+export interface ProjectIdea {
+  id: string;
+  project_id: number;
+  run_id: number | null;
+  title: string;
+  description: string;
+  tags: string[];
+  paper_refs: string[];
+  score: number;
+  novelty_score: number;
+  feasibility_score: number;
+  impact_score: number;
+  is_featured: boolean;
+  created_at: string;
+}
+
+export interface Project {
+  id: number;
+  name: string;
+  domain: string;
+  description: string | null;
+  focus_statement: string | null;
+  source_config: ProjectSourceConfig;
+  pipeline_config: ProjectPipelineConfig;
+  created_at: string;
+  ideas_count: number;
+  papers_count: number;
+  last_run: ProjectRun | null;
+}
+
+export interface ProjectRunStatus {
+  running: boolean;
+  current_run: ProjectRun | null;
+}
+
+export interface ProjectCreate {
+  name: string;
+  domain: string;
+  description?: string;
+  focus_statement?: string;
+  source_config: Record<string, unknown>;
+  pipeline_config: Record<string, unknown>;
+}
+
 export interface OrgImportStatus {
   running: boolean;
   handle: string | null;

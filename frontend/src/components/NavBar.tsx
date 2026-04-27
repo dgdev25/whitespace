@@ -51,6 +51,7 @@ export function NavBar() {
     path === "/" ? location.pathname === "/" : location.pathname.startsWith(path);
 
   const navLinks: [string, string][] = [
+    ["Projects", "/projects"],
     ["Ideas", "/"],
     ["History", "/history"],
     ["Saved", "/saved"],
@@ -65,7 +66,7 @@ export function NavBar() {
 
   return (
     <nav style={{
-      background: "hsla(0,0%,100%,0.85)",
+      background: "var(--nav-bg, hsla(0,0%,100%,0.85))",
       backdropFilter: "blur(8px)",
       borderBottom: "1px solid var(--border)",
       height: 60,

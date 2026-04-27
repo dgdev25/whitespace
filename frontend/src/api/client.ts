@@ -1,5 +1,5 @@
 import axios from "axios";
-import type { TodayFeed, IdeaDetail, IdeaSummary, SavedIdea, BuildOutput, RunnersResponse, SystemConfig, PipelineRunResponse, HistoryGroup, ScheduleStatus, OrgImportStatus } from "./types";
+import type { TodayFeed, IdeaDetail, IdeaSummary, SavedIdea, BuildOutput, RunnersResponse, SystemConfig, PipelineRunResponse, HistoryGroup, ScheduleStatus, OrgImportStatus, Project, ProjectCreate, ProjectIdea, ProjectRun, ProjectRunStatus } from "./types";
 
 const http = axios.create({ baseURL: "/api" });
 
@@ -37,4 +37,13 @@ export const api = {
     http.post("/system/github-repos/import-org", { handle }).then(r => r.data),
   getOrgImportStatus: (): Promise<OrgImportStatus> =>
     http.get("/system/github-repos/import-org/status").then(r => r.data),
+  listProjects: (): Promise<Project[]> => http.get("/projects").then(r => r.data),
+  createProject: (data: ProjectCreate): Promise<Project> => http.post("/projects", data).then(r => r.data),
+  getProject: (id: number): Promise<Project> => http.get(`/projects/${id}`).then(r => r.data),
+  updateProject: (id: number, data: Partial<ProjectCreate>): Promise<Project> => http.put(`/projects/${id}`, data).then(r => r.data),
+  deleteProject: (id: number): Promise<void> => http.delete(`/projects/${id}`).then(() => undefined),
+  getProjectIdeas: (id: number): Promise<ProjectIdea[]> => http.get(`/projects/${id}/ideas`).then(r => r.data),
+  getProjectRuns: (id: number): Promise<ProjectRun[]> => http.get(`/projects/${id}/runs`).then(r => r.data),
+  triggerProjectRun: (id: number): Promise<ProjectRunStatus> => http.post(`/projects/${id}/run`).then(r => r.data),
+  getProjectRunStatus: (id: number): Promise<ProjectRunStatus> => http.get(`/projects/${id}/run/status`).then(r => r.data),
 };

@@ -6,6 +6,9 @@ import { BuildOutputPage } from "./pages/BuildOutputPage";
 import { SavedPage } from "./pages/SavedPage";
 import { SettingsPage } from "./pages/SettingsPage";
 import { HistoryPage } from "./pages/HistoryPage";
+import { ProjectsPage } from "./pages/ProjectsPage";
+import { NewProjectPage } from "./pages/NewProjectPage";
+import { ProjectDetailPage } from "./pages/ProjectDetailPage";
 
 export default function App() {
   return (
@@ -18,6 +21,9 @@ export default function App() {
         <Route path="/ideas/:id/build/:tab" element={<BuildOutputPage />} />
         <Route path="/saved" element={<SavedPage />} />
         <Route path="/history" element={<HistoryPage />} />
+        <Route path="/projects" element={<ProjectsPage />} />
+        <Route path="/projects/new" element={<NewProjectPage />} />
+        <Route path="/projects/:projectId" element={<ProjectDetailPage />} />
         <Route path="/settings" element={<Navigate to="/settings/runner" replace />} />
         <Route path="/settings/:tab" element={<SettingsPage />} />
         <Route path="*" element={<Navigate to="/" />} />

@@ -35,6 +35,9 @@ def run_daily_pipeline(
     categories: list[str] | None = None,
     github_repos: list[str] | None = None,
     enabled_sources: dict[str, bool] | None = None,
+    focus_context: str | None = None,
+    project_run_id: int | None = None,
+    project_id: int | None = None,
 ) -> None:
     max_new = max_sources if max_sources is not None else settings.max_sources_per_run
     cached_limit = cached_analyses if cached_analyses is not None else settings.cached_analyses_count
@@ -281,7 +284,7 @@ def run_daily_pipeline(
 
         # 7. Synthesise
         prog.emit("synthesise", f"Synthesising {n_ideas} ideas…", "running")
-        ideas_raw = synthesise_ideas(gaps, n=n_ideas, source_map=source_map)
+        ideas_raw = synthesise_ideas(gaps, n=n_ideas, source_map=source_map, focus_context=focus_context)
         prog.emit("synthesise", f"{len(ideas_raw)} ideas synthesised", "done")
 
         # 8. Score
@@ -295,6 +298,34 @@ def run_daily_pipeline(
             session, ideas_scored, n=n_ideas, run_id=run.id
         )
         prog.emit("select", f"{len(idea_records)} ideas saved", "done")
+
+        # 9b. Persist ProjectIdea records if this run is scoped to a project
+        if project_id is not None and project_run_id is not None:
+            from app.db.models.project import ProjectIdea, ProjectRun as ProjectRunModel
+            for i, idea in enumerate(ideas_scored[:n_ideas]):
+                nov = float(idea.get("novelty_score", 0.5))
+                feas = float(idea.get("feasibility_score", 0.5))
+                imp = (nov + feas) / 2
+                composite = round((nov * 0.4 + feas * 0.3 + imp * 0.3) * 100)
+                pi = ProjectIdea(
+                    project_id=project_id,
+                    run_id=project_run_id,
+                    title=idea.get("title", ""),
+                    description=idea.get("description", ""),
+                    tags=idea.get("tags", []),
+                    paper_refs=idea.get("paper_refs", []),
+                    score=composite,
+                    novelty_score=round(nov * 100),
+                    feasibility_score=round(feas * 100),
+                    impact_score=round(imp * 100),
+                    is_featured=(i == 0),
+                )
+                session.add(pi)
+            session.commit()
+            run_rec = session.get(ProjectRunModel, project_run_id)
+            if run_rec:
+                run_rec.ideas_generated = min(n_ideas, len(ideas_scored))
+                session.commit()
 
         # 10. Connect
         prog.emit("connect", "Computing connections between ideas…", "running")
