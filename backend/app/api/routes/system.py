@@ -262,7 +262,9 @@ async def set_schedule(body: ScheduleConfigIn):
 
 def _import_handle_sync(handle: str) -> None:
     from sqlalchemy import text as sql_text
+    from sqlalchemy.orm.attributes import flag_modified
     from app.db.models.paper import Paper
+    from app.db.models.user_settings import UserSettings
     from worker.db import SessionLocal
     from worker.stages.fetch_github import fetch_handle_repos
 
@@ -287,11 +289,29 @@ def _import_handle_sync(handle: str) -> None:
                     url=p.get("url", ""),
                     source="github",
                 ))
+
+            # Add imported repo slugs to UserSettings.github_repos so they appear in the UI
+            # and are re-fetched on future pipeline runs.
+            new_slugs = [p["title"] for p in repos]  # title = "owner/repo"
+            if new_slugs:
+                user_cfg = session.get(UserSettings, 1)
+                if user_cfg is None:
+                    user_cfg = UserSettings(
+                        id=1, ideas_per_run=8, max_sources_per_run=40,
+                        cached_analyses_count=30, runner_model_prefs={},
+                        github_repos=[], enabled_sources={},
+                    )
+                    session.add(user_cfg)
+                existing_slugs = list(user_cfg.github_repos or [])
+                merged = existing_slugs + [s for s in new_slugs if s not in existing_slugs]
+                user_cfg.github_repos = merged
+                flag_modified(user_cfg, "github_repos")
+
             session.commit()
             _org_import_state.update({
                 "running": False,
                 "imported": len(repos),
-                "message": f"Done — {len(repos)} new repo(s) imported from {handle}",
+                "message": f"Done — {len(repos)} new repo(s) added from {handle}",
             })
     except Exception as exc:
         logger.error("Org import failed: %s", exc)
@@ -319,7 +339,9 @@ async def import_org_repos(body: OrgImportIn):
 
 @router.get("/github-repos/import-org/status", response_model=OrgImportStatusOut)
 async def get_org_import_status():
-    return OrgImportStatusOut(**_org_import_state)
+    with _org_import_lock:
+        snapshot = dict(_org_import_state)
+    return OrgImportStatusOut(**snapshot)
 
 
 async def _get_user_settings(session: AsyncSession) -> UserSettings:

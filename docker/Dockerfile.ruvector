@@ -1,0 +1,7 @@
+FROM ruvnet/ruvector-postgres:latest
+
+# The upstream image has a version mismatch: ruvector.control declares
+# default_version='2.0.0' but only ruvector--0.1.0.sql exists.
+# PostgreSQL requires ruvector--2.0.0.sql to install the extension.
+RUN cp /usr/share/postgresql/17/extension/ruvector--0.1.0.sql \
+       /usr/share/postgresql/17/extension/ruvector--2.0.0.sql

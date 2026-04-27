@@ -9,6 +9,7 @@ import { HistoryPage } from "./pages/HistoryPage";
 import { ProjectsPage } from "./pages/ProjectsPage";
 import { NewProjectPage } from "./pages/NewProjectPage";
 import { ProjectDetailPage } from "./pages/ProjectDetailPage";
+import { ProjectIdeaDetailPage } from "./pages/ProjectIdeaDetailPage";
 
 export default function App() {
   return (
@@ -24,6 +25,7 @@ export default function App() {
         <Route path="/projects" element={<ProjectsPage />} />
         <Route path="/projects/new" element={<NewProjectPage />} />
         <Route path="/projects/:projectId" element={<ProjectDetailPage />} />
+        <Route path="/projects/:projectId/ideas/:ideaId" element={<ProjectIdeaDetailPage />} />
         <Route path="/settings" element={<Navigate to="/settings/runner" replace />} />
         <Route path="/settings/:tab" element={<SettingsPage />} />
         <Route path="*" element={<Navigate to="/" />} />

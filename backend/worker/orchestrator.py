@@ -2,6 +2,7 @@ import logging
 from datetime import date, datetime, timezone
 from sqlalchemy.orm import Session
 from sqlalchemy import text
+from sqlalchemy.orm.attributes import flag_modified
 from app.core.config import settings
 from app.db.models.paper import Paper
 from app.db.models.chunk import Chunk
@@ -182,6 +183,7 @@ def run_daily_pipeline(
             for paper, _ in paper_records:
                 if paper.arxiv_id in arxiv_to_analysis:
                     paper.analysis = arxiv_to_analysis[paper.arxiv_id]
+                    flag_modified(paper, "analysis")
             session.commit()
 
             # Analyse any previously-imported papers that have no LLM analysis yet
@@ -207,6 +209,7 @@ def run_daily_pipeline(
                 for p in unanalysed:
                     if p.arxiv_id in extra_map:
                         p.analysis = extra_map[p.arxiv_id]
+                        flag_modified(p, "analysis")
                 session.commit()
                 new_analyses += extra_analyses
 
@@ -264,6 +267,7 @@ def run_daily_pipeline(
                 for p in to_analyse:
                     if p.arxiv_id in uncached_map:
                         p.analysis = uncached_map[p.arxiv_id]
+                        flag_modified(p, "analysis")
                 session.commit()
                 analyses += uncached_analyses
 
@@ -312,6 +316,9 @@ def run_daily_pipeline(
                     run_id=project_run_id,
                     title=idea.get("title", ""),
                     description=idea.get("description", ""),
+                    why_novel=idea.get("why_novel") or None,
+                    who_builds=idea.get("who_builds") or None,
+                    who_buys=idea.get("who_buys") or None,
                     tags=idea.get("tags", []),
                     paper_refs=idea.get("paper_refs", []),
                     score=composite,
@@ -340,8 +347,9 @@ def run_daily_pipeline(
         logger.info(f"Pipeline complete — {len(idea_records)} ideas for {today}")
 
     except Exception as exc:
-        prog.emit("error", str(exc), "error")
-        run.error = str(exc)
+        logger.error("Pipeline error: %s", exc, exc_info=True)
+        prog.emit("error", type(exc).__name__, "error")
+        run.error = type(exc).__name__  # store class name only, not internal details
         run.completed_at = datetime.now(timezone.utc)
         session.commit()
         raise

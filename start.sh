@@ -99,17 +99,18 @@ set +o allexport
 header "3/5  Python dependencies"
 
 VENV="$BACKEND/.venv"
-if [[ ! -d "$VENV" ]]; then
-  info "Creating virtualenv…"
-  python3 -m venv "$VENV"
-fi
-
-# shellcheck source=/dev/null
-source "$VENV/bin/activate"
 
 info "Installing / verifying backend packages…"
-pip install --quiet --upgrade pip
-pip install --quiet -e "$BACKEND[dev]"
+if command -v uv &>/dev/null; then
+  (cd "$BACKEND" && uv sync --quiet)
+else
+  if [[ ! -d "$VENV" ]]; then
+    info "Creating virtualenv…"
+    python3 -m venv "$VENV"
+  fi
+  "$VENV/bin/python" -m pip install --quiet --upgrade pip
+  "$VENV/bin/python" -m pip install --quiet -e "$BACKEND[dev]"
+fi
 ok "Backend packages ready"
 
 # ── npm deps ──────────────────────────────────────────────────────────────────
@@ -134,7 +135,7 @@ ALEMBIC_URL="${ALEMBIC_URL/+asyncpg/}"
 
 if [[ "$ALEMBIC_URL" == postgresql* || "$ALEMBIC_URL" == sqlite* ]]; then
   info "Running Alembic migrations…"
-  DATABASE_URL="$ALEMBIC_URL" alembic upgrade head
+  DATABASE_URL="$ALEMBIC_URL" "$VENV/bin/alembic" upgrade head
 else
   warn "Unrecognised DATABASE_URL scheme — skipping Alembic"
 fi

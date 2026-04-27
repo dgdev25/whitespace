@@ -1,9 +1,12 @@
 import logging
 import threading
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Optional
 
+import asyncio
 from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -21,11 +24,49 @@ from app.schemas.project import (
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/projects", tags=["projects"])
 
+_PRD_TEMPLATE: str | None = None
+
+
+def _get_prd_template() -> str:
+    global _PRD_TEMPLATE
+    if _PRD_TEMPLATE is None:
+        _PRD_TEMPLATE = (Path(__file__).parent.parent.parent.parent / "worker" / "prompts" / "prd.md").read_text()
+    return _PRD_TEMPLATE
+
 # Per-project run locks: project_id -> Lock
 _project_run_locks: dict[int, threading.Lock] = {}
 # Track active run ids: project_id -> run_id
 _active_project_runs: dict[int, int] = {}
 _locks_meta = threading.Lock()
+
+# Ordered stage definitions — name matches prog.emit() step keys
+_STAGE_META: list[tuple[str, str]] = [
+    ("fetch_arxiv",  "Fetch arXiv"),
+    ("fetch_s2",     "Fetch Semantic Scholar"),
+    ("fetch_blogs",  "Fetch Blogs"),
+    ("fetch_github", "Fetch GitHub"),
+    ("fetch_acl",    "Fetch ACL Anthology"),
+    ("fetch_oa",     "Fetch OpenAlex"),
+    ("analyse",      "Analyse Sources"),
+    ("critique",     "Critical Review"),
+    ("gap_map",      "Gap Map"),
+    ("synthesise",   "Synthesise Ideas"),
+    ("score",        "Score Ideas"),
+    ("select",       "Select Ideas"),
+]
+
+
+def _stages_from_prog(events: list[dict]) -> list[dict]:
+    """Collapse prog events to one entry per step (last event wins)."""
+    latest: dict[str, dict] = {}
+    for ev in events:
+        latest[ev["step"]] = ev
+    result = []
+    for name, label in _STAGE_META:
+        if name in latest:
+            ev = latest[name]
+            result.append({"name": name, "label": label, "message": ev["message"], "status": ev["status"]})
+    return result
 
 
 def _get_project_lock(project_id: int) -> threading.Lock:
@@ -38,6 +79,7 @@ def _get_project_lock(project_id: int) -> threading.Lock:
 def _run_project_pipeline_sync(project_id: int, run_id: int) -> None:
     from worker.db import SessionLocal
     from worker.orchestrator import run_daily_pipeline
+    from worker import progress as prog
 
     with SessionLocal() as s:
         run = s.get(ProjectRun, run_id)
@@ -69,17 +111,23 @@ def _run_project_pipeline_sync(project_id: int, run_id: int) -> None:
                 project_run_id=run_id,
                 project_id=project_id,
             )
+            events, _ = prog.get_snapshot()
+            final_stages = _stages_from_prog(events)
             run = s.get(ProjectRun, run_id)
             if run:
                 run.status = "done"
+                run.stages = final_stages
                 run.completed_at = datetime.now(timezone.utc)
                 s.commit()
         except Exception as exc:
-            logger.error("Project pipeline failed for project %d run %d: %s", project_id, run_id, exc)
+            logger.error("Project pipeline failed for project %d run %d: %s", project_id, run_id, exc, exc_info=True)
+            events, _ = prog.get_snapshot()
+            final_stages = _stages_from_prog(events)
             run = s.get(ProjectRun, run_id)
             if run:
                 run.status = "error"
-                run.error = str(exc)
+                run.stages = final_stages
+                run.error = type(exc).__name__  # store class name only, not internal message
                 run.completed_at = datetime.now(timezone.utc)
                 s.commit()
         finally:
@@ -216,6 +264,90 @@ async def list_project_ideas(
     return [ProjectIdeaOut.model_validate(i) for i in ideas]
 
 
+@router.get("/{project_id}/ideas/{idea_id}", response_model=ProjectIdeaOut)
+async def get_project_idea(
+    project_id: int,
+    idea_id: str,
+    session: AsyncSession = Depends(get_session),
+) -> ProjectIdeaOut:
+    project = await session.get(Project, project_id)
+    if project is None:
+        raise HTTPException(status_code=404, detail="Project not found")
+    result = await session.execute(
+        select(ProjectIdea).where(ProjectIdea.project_id == project_id, ProjectIdea.id == idea_id)
+    )
+    idea = result.scalar_one_or_none()
+    if idea is None:
+        raise HTTPException(status_code=404, detail="Idea not found")
+    return ProjectIdeaOut.model_validate(idea)
+
+
+class PrdResponse(BaseModel):
+    prd: str
+
+
+def _generate_prd_sync(project_id: int, idea_id: str) -> str:
+    from worker.db import SessionLocal
+    from worker.build_generator import generate_prd
+    from app.runners.selector import _default_runners, select_runner_or_raise
+
+    with SessionLocal() as s:
+        idea = s.get(ProjectIdea, idea_id)
+        if not idea or idea.project_id != project_id:
+            raise ValueError("Idea not found")
+
+        runner = select_runner_or_raise(_default_runners())
+
+        # Build a paper refs string from stored IDs
+        paper_refs = ", ".join(idea.paper_refs) if idea.paper_refs else ""
+
+        prd_template = _get_prd_template()
+
+        def _s(v: str) -> str:
+            return v.replace("{{", "{ {").replace("}}", "} }") if v else ""
+
+        prompt = (prd_template
+            .replace("{{title}}", _s(idea.title))
+            .replace("{{description}}", _s(idea.description))
+            .replace("{{why_novel}}", _s(idea.why_novel or ""))
+            .replace("{{who_builds}}", _s(idea.who_builds or ""))
+            .replace("{{who_buys}}", _s(idea.who_buys or ""))
+            .replace("{{paper_ids}}", paper_refs))
+
+        prd_text = runner.run(prompt)
+        # Strip any preamble before the first markdown heading
+        lines = prd_text.splitlines()
+        for i, line in enumerate(lines):
+            if line.startswith("#"):
+                prd_text = "\n".join(lines[i:]).strip()
+                break
+
+        idea.prd = prd_text
+        s.commit()
+        return prd_text
+
+
+@router.post("/{project_id}/ideas/{idea_id}/prd", response_model=PrdResponse)
+async def generate_project_idea_prd(
+    project_id: int,
+    idea_id: str,
+    session: AsyncSession = Depends(get_session),
+) -> PrdResponse:
+    project = await session.get(Project, project_id)
+    if project is None:
+        raise HTTPException(status_code=404, detail="Project not found")
+    result = await session.execute(
+        select(ProjectIdea).where(ProjectIdea.project_id == project_id, ProjectIdea.id == idea_id)
+    )
+    idea = result.scalar_one_or_none()
+    if idea is None:
+        raise HTTPException(status_code=404, detail="Idea not found")
+
+    loop = asyncio.get_event_loop()
+    prd_text = await loop.run_in_executor(None, _generate_prd_sync, project_id, idea_id)
+    return PrdResponse(prd=prd_text)
+
+
 @router.get("/{project_id}/runs", response_model=list[ProjectRunOut])
 async def list_project_runs(
     project_id: int,
@@ -284,6 +416,8 @@ async def trigger_project_run(
 async def get_project_run_status(
     project_id: int, session: AsyncSession = Depends(get_session)
 ) -> ProjectRunStatusOut:
+    from worker import progress as prog
+
     project = await session.get(Project, project_id)
     if project is None:
         raise HTTPException(status_code=404, detail="Project not found")
@@ -300,7 +434,6 @@ async def get_project_run_status(
         if run_row:
             current_run = ProjectRunOut.model_validate(run_row)
     elif running:
-        # Lock is held but no active run tracked — check most recent running run
         result = await session.execute(
             select(ProjectRun)
             .where(ProjectRun.project_id == project_id, ProjectRun.status == "running")
@@ -310,5 +443,23 @@ async def get_project_run_status(
         run_row = result.scalar_one_or_none()
         if run_row:
             current_run = ProjectRunOut.model_validate(run_row)
+    else:
+        # Not running — return the most recent completed run so the UI shows its stages
+        result = await session.execute(
+            select(ProjectRun)
+            .where(ProjectRun.project_id == project_id)
+            .order_by(ProjectRun.started_at.desc())
+            .limit(1)
+        )
+        run_row = result.scalar_one_or_none()
+        if run_row:
+            current_run = ProjectRunOut.model_validate(run_row)
+
+    # Overlay live prog stages while a run is in-flight so the UI updates in real-time
+    if running and current_run is not None:
+        events, _ = prog.get_snapshot()
+        live_stages = _stages_from_prog(events)
+        if live_stages:
+            current_run = current_run.model_copy(update={"stages": live_stages})
 
     return ProjectRunStatusOut(running=running, current_run=current_run)

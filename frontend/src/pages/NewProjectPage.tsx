@@ -1,16 +1,17 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useCreateProject } from "../hooks/useProjects";
+import { IconAI, IconBio, IconGlobe, IconTrendingUp, IconAtom, IconSparkle, IconCheck } from "../components/Icons";
 
 type Domain = "ai" | "biomedical" | "climate" | "finance" | "materials" | "custom";
 
-const DOMAINS: { key: Domain; icon: string; label: string; desc: string }[] = [
-  { key: "ai",         icon: "🤖", label: "AI / ML",    desc: "Foundation models, agents, alignment, LLM infrastructure" },
-  { key: "biomedical", icon: "🧬", label: "Biomedical",  desc: "Genomics, drug discovery, clinical research, multi-omics" },
-  { key: "climate",    icon: "🌍", label: "Climate",     desc: "Carbon capture, energy, climate modelling, adaptation" },
-  { key: "finance",    icon: "📈", label: "Finance",     desc: "Quantitative research, market microstructure, risk models" },
-  { key: "materials",  icon: "⚗️", label: "Materials",   desc: "Novel materials, synthesis pathways, battery chemistry" },
-  { key: "custom",     icon: "✦",  label: "Custom",      desc: "Define your own domain, sources and prompt context" },
+const DOMAINS: { key: Domain; icon: React.ReactNode; label: string; desc: string }[] = [
+  { key: "ai",         icon: <IconAI size={22} />,          label: "AI / ML",    desc: "Foundation models, agents, alignment, LLM infrastructure" },
+  { key: "biomedical", icon: <IconBio size={22} />,         label: "Biomedical",  desc: "Genomics, drug discovery, clinical research, multi-omics" },
+  { key: "climate",    icon: <IconGlobe size={22} />,       label: "Climate",     desc: "Carbon capture, energy, climate modelling, adaptation" },
+  { key: "finance",    icon: <IconTrendingUp size={22} />,  label: "Finance",     desc: "Quantitative research, market microstructure, risk models" },
+  { key: "materials",  icon: <IconAtom size={22} />,        label: "Materials",   desc: "Novel materials, synthesis pathways, battery chemistry" },
+  { key: "custom",     icon: <IconSparkle size={22} />,     label: "Custom",      desc: "Define your own domain, sources and prompt context" },
 ];
 
 type SourceDef = { key: string; label: string; description: string; tags: string[]; default: boolean };
@@ -95,7 +96,7 @@ function StepIndicator({ current, total }: { current: number; total: number }) {
                 color: isDone ? "#4ade80" : isActive ? "white" : "var(--text-muted)",
                 border: isDone ? "1px solid rgba(34,197,94,0.3)" : isActive ? "none" : "1px solid var(--border)",
               }}>
-                {isDone ? "✓" : stepNum}
+                {isDone ? <IconCheck size={12} /> : stepNum}
               </div>
               <span style={{ fontSize: 12, fontWeight: 500, color: isDone ? "#4ade80" : isActive ? "var(--text-primary)" : "var(--text-muted)", whiteSpace: "nowrap" }}>
                 {label}
@@ -118,6 +119,7 @@ export function NewProjectPage() {
   const createProject = useCreateProject();
 
   const [step, setStep] = useState(1);
+  const [createError, setCreateError] = useState<string | null>(null);
   const [name, setName] = useState("");
   const [domain, setDomain] = useState<Domain | null>(null);
   const [enabledSources, setEnabledSources] = useState<Record<string, boolean>>({});
@@ -149,6 +151,7 @@ export function NewProjectPage() {
 
   async function handleCreate() {
     if (!domain || !name.trim()) return;
+    setCreateError(null);
     const sourceConfig = {
       enabled_sources: enabledSources,
       orgs: null, categories: null, github_repos: [],
@@ -159,15 +162,19 @@ export function NewProjectPage() {
       cached_analyses_count: cachedCount,
       interval_minutes: intervalVal || null,
     };
-    const project = await createProject.mutateAsync({
-      name: name.trim(),
-      domain,
-      description: "",
-      focus_statement: focusStatement.trim() || undefined,
-      source_config: sourceConfig,
-      pipeline_config: pipelineConfig,
-    });
-    navigate(`/projects/${project.id}`);
+    try {
+      const project = await createProject.mutateAsync({
+        name: name.trim(),
+        domain,
+        description: "",
+        focus_statement: focusStatement.trim() || undefined,
+        source_config: sourceConfig,
+        pipeline_config: pipelineConfig,
+      });
+      navigate(`/projects/${project.id}`);
+    } catch (err) {
+      setCreateError(err instanceof Error ? err.message : "Failed to create project — check that the backend is running.");
+    }
   }
 
   const domainColor = domain ? DOMAIN_COLOR[domain] : "var(--accent)";
@@ -220,7 +227,7 @@ export function NewProjectPage() {
                     transition: "all 0.15s",
                   }}
                 >
-                  <div style={{ fontSize: 22, marginBottom: 8 }}>{d.icon}</div>
+                  <div style={{ marginBottom: 8, display: "flex", color: "var(--text-secondary)" }}>{d.icon}</div>
                   <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)" }}>{d.label}</div>
                   <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 3, lineHeight: 1.4 }}>{d.desc}</div>
                 </button>
@@ -374,6 +381,11 @@ export function NewProjectPage() {
               {createProject.isPending ? "Creating…" : "Create Project & Run Pipeline →"}
             </button>
           </div>
+          {createError && (
+            <p style={{ marginTop: 12, fontSize: 13, color: "#f87171", background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)", borderRadius: 8, padding: "10px 14px" }}>
+              {createError}
+            </p>
+          )}
         </>
       )}
     </div>

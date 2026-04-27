@@ -1,6 +1,7 @@
 import base64
 import logging
 import os
+import re
 from collections.abc import Callable
 
 import requests
@@ -8,6 +9,13 @@ import requests
 logger = logging.getLogger(__name__)
 GITHUB_API = "https://api.github.com"
 README_MAX_CHARS = 50_000
+_HANDLE_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9\-]{0,38}$")
+
+
+def _validate_handle(handle: str) -> str:
+    """Raise ValueError if handle contains path-traversal or invalid characters."""
+    if not _HANDLE_RE.match(handle):
+        raise ValueError(f"Invalid GitHub handle: {handle!r}. Must be alphanumeric with hyphens only.")
 
 
 def _headers() -> dict[str, str]:
@@ -37,9 +45,16 @@ def _fetch_readme(owner: str, repo: str) -> str | None:
 
 
 def _check_rate_limit(resp: requests.Response) -> None:
-    """Raise a clear error if GitHub returned a rate-limit 403."""
+    """Raise a clear error if GitHub returned a rate-limit response (403 or 429)."""
+    if resp.status_code == 429:
+        raise RuntimeError(
+            "GitHub API rate limit exceeded (429). Set GITHUB_TOKEN in backend/.env and restart the backend."
+        )
     if resp.status_code == 403:
-        msg = (resp.json() or {}).get("message", "")
+        try:
+            msg = (resp.json() or {}).get("message", "")
+        except ValueError:
+            msg = ""
         if "rate limit" in msg.lower():
             raise RuntimeError(
                 "GitHub API rate limit exceeded. Set GITHUB_TOKEN in backend/.env and restart the backend."
@@ -48,6 +63,7 @@ def _check_rate_limit(resp: requests.Response) -> None:
 
 def _list_handle_repos(handle: str) -> list[dict]:
     """Return all public repo metadata for a GitHub user or org (handles both account types)."""
+    _validate_handle(handle)
     hdrs = _headers()
     for endpoint in (
         f"{GITHUB_API}/orgs/{handle}/repos",
@@ -93,7 +109,7 @@ def fetch_handle_repos(
             readme = _fetch_readme(owner, repo_name)
             if readme:
                 description = meta.get("description") or ""
-                safe_readme = f"<readme>\n{readme}\n</readme>"
+                safe_readme = f"<readme>\n{readme.replace('</readme>', '<\\/readme>')}\n</readme>"
                 results.append({
                     "arxiv_id": uid,
                     "title": f"{owner}/{repo_name}",
@@ -119,6 +135,12 @@ def fetch_github_repos(repos: list[str], existing_ids: set[str]) -> list[dict]:
             logger.warning("Skipping invalid GitHub repo slug: %r", slug)
             continue
         owner, repo = slug.split("/", 1)
+        try:
+            _validate_handle(owner)
+            _validate_handle(repo)
+        except ValueError as exc:
+            logger.warning("Skipping repo with invalid owner/name: %r — %s", slug, exc)
+            continue
         uid = f"github:{owner}/{repo}"
         if uid in existing_ids:
             continue
@@ -148,7 +170,7 @@ def fetch_github_repos(repos: list[str], existing_ids: set[str]) -> list[dict]:
 
         description = meta.get("description") or ""
         # Wrap README in delimiters to prevent prompt injection from user-controlled content
-        safe_readme = f"<readme>\n{readme}\n</readme>"
+        safe_readme = f"<readme>\n{readme.replace('</readme>', '<\\/readme>')}\n</readme>"
         results.append({
             "arxiv_id": uid,
             "title": f"{owner}/{repo}",

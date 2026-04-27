@@ -16,3 +16,17 @@ dist/
 *.db-shm
 *.db-wal
 backend/package*.json
+# AI tooling / local state
+.agentic-qe/
+.claude/
+.omx/
+.mcp.json
+# Planning / scratch files
+*.backup
+PHASE_*.md
+AGENTIC_QE_ROADMAP.md
+PROJECT_STATUS.md
+REMAINING_*.md
+SETUP_COMPLETE.md
+# Test output
+coverage/

@@ -14,6 +14,26 @@ export function useProjectIdeas(id: number) {
   return useQuery({ queryKey: ["project-ideas", id], queryFn: () => api.getProjectIdeas(id), enabled: !!id });
 }
 
+export function useProjectIdea(projectId: number, ideaId: string) {
+  return useQuery({
+    queryKey: ["project-idea", projectId, ideaId],
+    queryFn: () => api.getProjectIdea(projectId, ideaId),
+    enabled: !!projectId && !!ideaId,
+  });
+}
+
+export function useGenerateProjectIdeaPrd(projectId: number, ideaId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => api.generateProjectIdeaPrd(projectId, ideaId),
+    onSuccess: (data) => {
+      qc.setQueryData(["project-idea", projectId, ideaId], (old: unknown) =>
+        old ? { ...(old as object), prd: data.prd } : old
+      );
+    },
+  });
+}
+
 export function useProjectRuns(id: number) {
   return useQuery({ queryKey: ["project-runs", id], queryFn: () => api.getProjectRuns(id), enabled: !!id });
 }
@@ -22,7 +42,7 @@ export function useProjectRunStatus(id: number, enabled: boolean) {
   return useQuery({
     queryKey: ["project-run-status", id],
     queryFn: () => api.getProjectRunStatus(id),
-    refetchInterval: enabled ? 2000 : false,
+    refetchInterval: enabled ? 4000 : false,
     enabled: !!id,
   });
 }

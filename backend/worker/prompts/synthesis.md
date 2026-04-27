@@ -16,6 +16,7 @@ For each idea, provide:
 4. who_builds: who would build this (specific role, e.g. "ML engineer with LangChain or agent framework experience")
 5. who_buys: who pays for this (specific org type and qualifying signal, e.g. "AI teams at seed-to-Series-B startups running multi-agent workflows in production")
 6. paper_refs: list of arxiv_id strings from the AVAILABLE SOURCES list below that directly ground this idea. Use ONLY ids from that list — do not invent or guess ids. Include 1–3 ids per idea.
+7. tags: list of 2–4 short category strings that describe this idea (e.g. "Evaluation", "Observability", "CLI Tool", "Open Source", "Safety", "Memory", "Agents", "TypeScript"). Choose from common engineering tool categories — keep each tag under 3 words.
 
 Return a JSON array of exactly {{n}} objects with these keys and no others.
 IMPORTANT: Respond ONLY with a raw JSON array. Do not include markdown code fences, explanations, or any text outside the JSON array.

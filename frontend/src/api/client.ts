@@ -43,6 +43,8 @@ export const api = {
   updateProject: (id: number, data: Partial<ProjectCreate>): Promise<Project> => http.put(`/projects/${id}`, data).then(r => r.data),
   deleteProject: (id: number): Promise<void> => http.delete(`/projects/${id}`).then(() => undefined),
   getProjectIdeas: (id: number): Promise<ProjectIdea[]> => http.get(`/projects/${id}/ideas`).then(r => r.data),
+  getProjectIdea: (projectId: number, ideaId: string): Promise<ProjectIdea> => http.get(`/projects/${projectId}/ideas/${ideaId}`).then(r => r.data),
+  generateProjectIdeaPrd: (projectId: number, ideaId: string): Promise<{ prd: string }> => http.post(`/projects/${projectId}/ideas/${ideaId}/prd`).then(r => r.data),
   getProjectRuns: (id: number): Promise<ProjectRun[]> => http.get(`/projects/${id}/runs`).then(r => r.data),
   triggerProjectRun: (id: number): Promise<ProjectRunStatus> => http.post(`/projects/${id}/run`).then(r => r.data),
   getProjectRunStatus: (id: number): Promise<ProjectRunStatus> => http.get(`/projects/${id}/run/status`).then(r => r.data),

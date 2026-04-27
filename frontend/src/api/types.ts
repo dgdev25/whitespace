@@ -149,6 +149,9 @@ export interface ProjectIdea {
   run_id: number | null;
   title: string;
   description: string;
+  why_novel: string | null;
+  who_builds: string | null;
+  who_buys: string | null;
   tags: string[];
   paper_refs: string[];
   score: number;
@@ -156,6 +159,7 @@ export interface ProjectIdea {
   feasibility_score: number;
   impact_score: number;
   is_featured: boolean;
+  prd: string | null;
   created_at: string;
 }
 

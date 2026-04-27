@@ -1,22 +1,22 @@
 from datetime import datetime
 from typing import Optional
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class ProjectCreate(BaseModel):
-    name: str
-    domain: str
-    description: Optional[str] = None
-    focus_statement: Optional[str] = None
+    name: str = Field(..., min_length=1, max_length=200)
+    domain: str = Field(..., min_length=1, max_length=200)
+    description: Optional[str] = Field(None, max_length=2000)
+    focus_statement: Optional[str] = Field(None, max_length=2000)
     source_config: dict = {}
     pipeline_config: dict = {}
 
 
 class ProjectUpdate(BaseModel):
-    name: Optional[str] = None
-    domain: Optional[str] = None
-    description: Optional[str] = None
-    focus_statement: Optional[str] = None
+    name: Optional[str] = Field(None, min_length=1, max_length=200)
+    domain: Optional[str] = Field(None, min_length=1, max_length=200)
+    description: Optional[str] = Field(None, max_length=2000)
+    focus_statement: Optional[str] = Field(None, max_length=2000)
     source_config: Optional[dict] = None
     pipeline_config: Optional[dict] = None
 
@@ -40,6 +40,9 @@ class ProjectIdeaOut(BaseModel):
     run_id: Optional[int]
     title: str
     description: str
+    why_novel: Optional[str] = None
+    who_builds: Optional[str] = None
+    who_buys: Optional[str] = None
     tags: list[str]
     paper_refs: list[str]
     score: int
@@ -47,6 +50,7 @@ class ProjectIdeaOut(BaseModel):
     feasibility_score: int
     impact_score: int
     is_featured: bool
+    prd: Optional[str] = None
     created_at: datetime
     model_config = {"from_attributes": True}
 

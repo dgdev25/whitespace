@@ -1,14 +1,15 @@
 import { useNavigate } from "react-router-dom";
 import { useProjects, useDeleteProject } from "../hooks/useProjects";
+import { IconSparkle } from "../components/Icons";
 import type { Project } from "../api/types";
 
-const DOMAIN_META: Record<string, { label: string; icon: string; colorVar: string; dimVar: string; borderVar: string; textVar: string }> = {
-  ai:         { label: "AI / ML",    icon: "🤖", colorVar: "--domain-ai",        dimVar: "--domain-ai-dim",        borderVar: "--domain-ai-border",        textVar: "--domain-ai-text" },
-  biomedical: { label: "Biomedical", icon: "🧬", colorVar: "--domain-bio",       dimVar: "--domain-bio-dim",       borderVar: "--domain-bio-border",       textVar: "--domain-bio-text" },
-  climate:    { label: "Climate",    icon: "🌍", colorVar: "--domain-climate",   dimVar: "--domain-climate-dim",   borderVar: "--domain-climate-border",   textVar: "--domain-climate-text" },
-  finance:    { label: "Finance",    icon: "📈", colorVar: "--domain-finance",   dimVar: "--domain-finance-dim",   borderVar: "--domain-finance-border",   textVar: "--domain-finance-text" },
-  materials:  { label: "Materials",  icon: "⚗️", colorVar: "--domain-materials", dimVar: "--domain-materials-dim", borderVar: "--domain-materials-border", textVar: "--domain-materials-text" },
-  custom:     { label: "Custom",     icon: "✦",  colorVar: "--domain-ai",        dimVar: "--domain-ai-dim",        borderVar: "--domain-ai-border",        textVar: "--domain-ai-text" },
+const DOMAIN_META: Record<string, { label: string; colorVar: string; dimVar: string; borderVar: string; textVar: string }> = {
+  ai:         { label: "AI / ML",    colorVar: "--domain-ai",        dimVar: "--domain-ai-dim",        borderVar: "--domain-ai-border",        textVar: "--domain-ai-text" },
+  biomedical: { label: "Biomedical", colorVar: "--domain-bio",       dimVar: "--domain-bio-dim",       borderVar: "--domain-bio-border",       textVar: "--domain-bio-text" },
+  climate:    { label: "Climate",    colorVar: "--domain-climate",   dimVar: "--domain-climate-dim",   borderVar: "--domain-climate-border",   textVar: "--domain-climate-text" },
+  finance:    { label: "Finance",    colorVar: "--domain-finance",   dimVar: "--domain-finance-dim",   borderVar: "--domain-finance-border",   textVar: "--domain-finance-text" },
+  materials:  { label: "Materials",  colorVar: "--domain-materials", dimVar: "--domain-materials-dim", borderVar: "--domain-materials-border", textVar: "--domain-materials-text" },
+  custom:     { label: "Custom",     colorVar: "--domain-ai",        dimVar: "--domain-ai-dim",        borderVar: "--domain-ai-border",        textVar: "--domain-ai-text" },
 };
 
 function domainMeta(domain: string) {
@@ -224,7 +225,7 @@ export function ProjectsPage() {
         </>
       ) : (
         <div style={{ textAlign: "center", padding: "80px 20px", color: "var(--text-muted)" }}>
-          <div style={{ fontSize: 40, marginBottom: 16 }}>✦</div>
+          <div style={{ marginBottom: 16, color: "var(--text-muted)" }}><IconSparkle size={40} /></div>
           <h2 style={{ fontSize: 18, fontWeight: 600, color: "var(--text-primary)", marginBottom: 8 }}>No projects yet</h2>
           <p style={{ fontSize: 14, marginBottom: 24 }}>Create your first project to start synthesising domain-specific research ideas.</p>
           <button

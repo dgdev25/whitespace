@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import { useRunners, useSystemConfig, useSetRunner, useSetDataSources, useSchedule, useSetSchedule, useSetPipelineConfig, useSetRunnerModel, useSetGithubRepos, useImportOrg, useOrgImportStatus, useToggleSource } from "../hooks/useIdeas";
 import { useThemeStore } from "../store/themeStore";
 
@@ -54,6 +55,30 @@ const FEED_SOURCES: { key: string; label: string; description: string }[] = [
   { key: "open_alex", label: "OpenAlex", description: "Broad academic coverage with keyword-based search across all institutions." },
 ];
 
+function parseGithubRepoSlug(input: string): string {
+  const s = input.trim();
+  try {
+    const url = new URL(s);
+    if (url.hostname === "github.com") {
+      const parts = url.pathname.replace(/^\//, "").replace(/\/$/, "").split("/");
+      if (parts.length >= 2) return `${parts[0]}/${parts[1]}`;
+    }
+  } catch { /* not a URL */ }
+  return s;
+}
+
+function parseGithubHandle(input: string): string {
+  const s = input.trim();
+  try {
+    const url = new URL(s);
+    if (url.hostname === "github.com") {
+      const parts = url.pathname.replace(/^\//, "").replace(/\/$/, "").split("/");
+      if (parts.length >= 1 && parts[0]) return parts[0];
+    }
+  } catch { /* not a URL */ }
+  return s;
+}
+
 export function SettingsPage() {
   const { tab: tabParam } = useParams<{ tab: string }>();
   const navigate = useNavigate();
@@ -76,11 +101,20 @@ export function SettingsPage() {
   const [pipelineTab, setPipelineTab] = useState<PipelineTab>("limits");
   const [feedsTab, setFeedsTab] = useState<FeedsTab>("sources");
   const [orgInput, setOrgInput] = useState<string>("");
+  const [scanInitiated, setScanInitiated] = useState(false);
   const [intervalInput, setIntervalInput] = useState<string>("");
   const [ideasPerRunInput, setIdeasPerRunInput] = useState<string>("");
   const [maxSourcesInput, setMaxSourcesInput] = useState<string>("");
   const [cachedCountInput, setCachedCountInput] = useState<string>("");
   const [githubInput, setGithubInput] = useState<string>("");
+  const qc = useQueryClient();
+  const prevOrgRunning = useRef(false);
+  useEffect(() => {
+    if (prevOrgRunning.current && orgImport && !orgImport.running) {
+      qc.invalidateQueries({ queryKey: ["config"] });
+    }
+    prevOrgRunning.current = orgImport?.running ?? false;
+  }, [orgImport?.running]);
 
   const tabStyle = (t: Tab): React.CSSProperties => ({
     background: "none",
@@ -388,31 +422,109 @@ export function SettingsPage() {
           )}
 
           {feedsTab === "github" && (
-            <SettingsCard title="GitHub Configuration" description="Add repos as sources and import all public repos from a user or org.">
-              <div style={{ marginBottom: 20 }}>
-                <p style={{ fontSize: 13, fontWeight: 500, color: "var(--text-secondary)", marginBottom: 10 }}>Import User or Org</p>
+            <SettingsCard title="Reference Repositories" description="READMEs and recent activity from these repos are read during each pipeline run and inform idea generation. Add any repos relevant to your research domain.">
+              {config && (
+                <div style={{ marginBottom: 28 }}>
+                  <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
+                    <input
+                      type="text"
+                      placeholder="owner/repo or https://github.com/owner/repo"
+                      value={githubInput}
+                      onChange={e => setGithubInput(e.target.value)}
+                      onKeyDown={e => {
+                        if (e.key === "Enter") {
+                          const slug = parseGithubRepoSlug(githubInput);
+                          if (slug && !config.github_repos.includes(slug)) {
+                            setGithubRepos.mutate([...config.github_repos, slug]);
+                            setGithubInput("");
+                          }
+                        }
+                      }}
+                      style={{ ...inputStyle, flex: 1 }}
+                    />
+                    <button
+                      onClick={() => {
+                        const slug = parseGithubRepoSlug(githubInput);
+                        if (slug && !config.github_repos.includes(slug)) {
+                          setGithubRepos.mutate([...config.github_repos, slug]);
+                          setGithubInput("");
+                        }
+                      }}
+                      disabled={setGithubRepos.isPending || !githubInput.trim()}
+                      style={primaryButtonStyle}
+                    >Add</button>
+                  </div>
+                  {config.github_repos.length > 0 ? (
+                    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                      {config.github_repos.map(repo => (
+                        <div key={repo} style={{
+                          display: "flex", alignItems: "center", justifyContent: "space-between",
+                          background: "var(--bg)", border: "1px solid var(--border)",
+                          padding: "10px 14px", borderRadius: 8,
+                        }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                            <span style={{ fontSize: 15, color: "var(--text-muted)" }}>⌥</span>
+                            <div>
+                              <p style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)", margin: 0 }}>{repo}</p>
+                              <a
+                                href={`https://github.com/${repo}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                style={{ fontSize: 11, color: "var(--text-muted)", textDecoration: "none" }}
+                              >
+                                github.com/{repo} ↗
+                              </a>
+                            </div>
+                          </div>
+                          <button
+                            onClick={() => setGithubRepos.mutate(config.github_repos.filter(r => r !== repo))}
+                            disabled={setGithubRepos.isPending}
+                            style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", fontSize: 18, lineHeight: 1, padding: "0 4px" }}
+                            aria-label={`Remove ${repo}`}
+                          >×</button>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div style={{ padding: "24px 0", textAlign: "center", color: "var(--text-muted)", fontSize: 13 }}>
+                      No reference repos yet. Add repos above and they'll be read on each pipeline run.
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <div style={{ borderTop: "1px solid var(--border)", paddingTop: 20 }}>
+                <p style={{ fontSize: 13, fontWeight: 600, color: "var(--text-secondary)", marginBottom: 4 }}>Bulk import from a user or org</p>
+                <p style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 10 }}>Scans all public repos for a GitHub user or organisation and adds them to the list above.</p>
                 <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
                   <input
                     type="text"
-                    placeholder="e.g. ruvnet"
+                    placeholder="username or org (e.g. ruvnet)"
                     value={orgInput}
-                    onChange={e => setOrgInput(e.target.value)}
+                    onChange={e => { setOrgInput(e.target.value); setScanInitiated(false); }}
                     onKeyDown={e => {
-                      if (e.key === "Enter" && orgInput.trim() && !orgImport?.running)
-                        importOrg.mutate(orgInput.trim());
+                      if (e.key === "Enter" && orgInput.trim() && !orgImport?.running) {
+                        setScanInitiated(true);
+                        importOrg.mutate(parseGithubHandle(orgInput));
+                      }
                     }}
                     disabled={orgImport?.running}
                     style={{ ...inputStyle, flex: 1 }}
                   />
                   <button
-                    onClick={() => { if (orgInput.trim()) importOrg.mutate(orgInput.trim()); }}
+                    onClick={() => {
+                      if (orgInput.trim()) {
+                        setScanInitiated(true);
+                        importOrg.mutate(parseGithubHandle(orgInput));
+                      }
+                    }}
                     disabled={!orgInput.trim() || orgImport?.running || importOrg.isPending}
                     style={primaryButtonStyle}
                   >
                     {orgImport?.running ? "Scanning…" : "Scan"}
                   </button>
                 </div>
-                {orgImport?.message && (
+                {scanInitiated && orgImport?.message && (
                   <div style={{
                     padding: "10px 14px", borderRadius: 8,
                     background: orgImport.running ? "var(--bg)" : (orgImport.message.startsWith("Error") ? "rgba(220,53,69,0.08)" : "rgba(40,167,69,0.08)"),
@@ -434,62 +546,6 @@ export function SettingsPage() {
                   Set <code style={{ background: "var(--bg)", padding: "1px 5px", borderRadius: 4, fontSize: 11 }}>GITHUB_TOKEN</code> in <code style={{ background: "var(--bg)", padding: "1px 5px", borderRadius: 4, fontSize: 11 }}>backend/.env</code> to avoid rate limits.
                 </p>
               </div>
-              {config && (
-                <div>
-                  <p style={{ fontSize: 13, fontWeight: 500, color: "var(--text-secondary)", marginBottom: 10 }}>Tracked Repositories</p>
-                  <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
-                    <input
-                      type="text"
-                      placeholder="owner/repo"
-                      value={githubInput}
-                      onChange={e => setGithubInput(e.target.value)}
-                      onKeyDown={e => {
-                        if (e.key === "Enter") {
-                          const slug = githubInput.trim();
-                          if (slug && slug.includes("/") && !config.github_repos.includes(slug)) {
-                            setGithubRepos.mutate([...config.github_repos, slug]);
-                            setGithubInput("");
-                          }
-                        }
-                      }}
-                      style={{ ...inputStyle, flex: 1 }}
-                    />
-                    <button
-                      onClick={() => {
-                        const slug = githubInput.trim();
-                        if (slug && slug.includes("/") && !config.github_repos.includes(slug)) {
-                          setGithubRepos.mutate([...config.github_repos, slug]);
-                          setGithubInput("");
-                        }
-                      }}
-                      disabled={setGithubRepos.isPending}
-                      style={primaryButtonStyle}
-                    >Add</button>
-                  </div>
-                  {config.github_repos.length > 0 ? (
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                      {config.github_repos.map(repo => (
-                        <span key={repo} style={{
-                          display: "inline-flex", alignItems: "center", gap: 6,
-                          background: "var(--bg)", border: "1px solid var(--border)",
-                          padding: "5px 10px 5px 14px", borderRadius: 999,
-                          fontSize: 13, color: "var(--text-primary)",
-                        }}>
-                          {repo}
-                          <button
-                            onClick={() => setGithubRepos.mutate(config.github_repos.filter(r => r !== repo))}
-                            disabled={setGithubRepos.isPending}
-                            style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", fontSize: 16, lineHeight: 1, padding: "0 2px" }}
-                            aria-label={`Remove ${repo}`}
-                          >×</button>
-                        </span>
-                      ))}
-                    </div>
-                  ) : (
-                    <p style={{ fontSize: 13, color: "var(--text-muted)" }}>No repos added yet.</p>
-                  )}
-                </div>
-              )}
             </SettingsCard>
           )}
         </>

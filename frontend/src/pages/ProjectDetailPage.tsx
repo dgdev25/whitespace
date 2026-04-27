@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useProject, useProjectIdeas, useProjectRuns, useProjectRunStatus, useTriggerProjectRun } from "../hooks/useProjects";
+import { IconCheck, IconRefresh, IconX, IconHeart, IconSparkle, IconStar } from "../components/Icons";
 import type { ProjectIdea, ProjectRun } from "../api/types";
 
 type DetailTab = "ideas" | "pipeline" | "sources" | "settings";
@@ -51,14 +52,21 @@ function Tag({ label }: { label: string }) {
   );
 }
 
-function IdeaCard({ idea }: { idea: ProjectIdea }) {
+function IdeaCard({ idea, projectId }: { idea: ProjectIdea; projectId: number }) {
+  const navigate = useNavigate();
   const isTop = idea.is_featured;
   return (
-    <div style={{
-      background: "var(--surface)", border: `1px solid ${isTop ? "var(--domain-ai-border)" : "var(--border)"}`,
-      borderRadius: 10, padding: 18, marginBottom: 12, transition: "border-color 0.15s",
-      background: isTop ? "linear-gradient(135deg, var(--surface) 0%, var(--domain-ai-dim) 100%)" : "var(--surface)",
-    } as React.CSSProperties}>
+    <div
+      onClick={() => navigate(`/projects/${projectId}/ideas/${idea.id}`)}
+      style={{
+        background: isTop ? "linear-gradient(135deg, var(--surface) 0%, var(--domain-ai-dim) 100%)" : "var(--surface)",
+        border: `1px solid ${isTop ? "var(--domain-ai-border)" : "var(--border)"}`,
+        borderRadius: 10, padding: 18, marginBottom: 12, transition: "border-color 0.15s, box-shadow 0.15s",
+        cursor: "pointer",
+      }}
+      onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.boxShadow = "0 2px 12px rgba(0,0,0,0.08)"; (e.currentTarget as HTMLDivElement).style.borderColor = isTop ? "var(--domain-ai-border)" : "var(--accent)"; }}
+      onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.boxShadow = ""; (e.currentTarget as HTMLDivElement).style.borderColor = isTop ? "var(--domain-ai-border)" : "var(--border)"; }}
+    >
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 12 }}>
         <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
           <ScoreRing score={idea.score} />
@@ -67,12 +75,12 @@ function IdeaCard({ idea }: { idea: ProjectIdea }) {
               {idea.tags.slice(0, 2).map(t => (
                 <span key={t} style={{ background: "var(--domain-ai-dim)", color: "var(--domain-ai-text)", border: "1px solid var(--domain-ai-border)", padding: "2px 8px", borderRadius: 999, fontSize: 10, fontWeight: 600 }}>{t}</span>
               ))}
-              {isTop && <span style={{ fontSize: 10, color: "var(--text-muted)", alignSelf: "center" }}>★ Top idea</span>}
+              {isTop && <span style={{ fontSize: 10, color: "var(--text-muted)", alignSelf: "center", display: "inline-flex", alignItems: "center", gap: 3 }}><IconStar size={10} /> Top idea</span>}
             </div>
             <h3 style={{ fontSize: 15, fontWeight: 600, color: "var(--text-primary)", lineHeight: 1.4 }}>{idea.title}</h3>
           </div>
         </div>
-        <button style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", fontSize: 18, flexShrink: 0 }}>♡</button>
+        <button onClick={e => e.stopPropagation()} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", flexShrink: 0, display: "flex", alignItems: "center", padding: 0 }}><IconHeart size={18} /></button>
       </div>
 
       {idea.description && (
@@ -98,17 +106,18 @@ function IdeaCard({ idea }: { idea: ProjectIdea }) {
 }
 
 function StageIcon({ status }: { status: string }) {
+  const base: React.CSSProperties = { width: 28, height: 28, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 };
   if (status === "done") return (
-    <div style={{ width: 28, height: 28, borderRadius: "50%", background: "rgba(34,197,94,0.12)", color: "#4ade80", border: "1px solid rgba(34,197,94,0.3)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, flexShrink: 0 }}>✓</div>
+    <div style={{ ...base, background: "rgba(34,197,94,0.12)", color: "#4ade80", border: "1px solid rgba(34,197,94,0.3)" }}><IconCheck size={12} /></div>
   );
   if (status === "running") return (
-    <div style={{ width: 28, height: 28, borderRadius: "50%", background: "var(--domain-ai-dim)", color: "var(--domain-ai-text)", border: "1px solid var(--domain-ai-border)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, flexShrink: 0, animation: "spin 1s linear infinite" }}>↻</div>
+    <div style={{ ...base, background: "var(--domain-ai-dim)", color: "var(--domain-ai-text)", border: "1px solid var(--domain-ai-border)", animation: "spin 1s linear infinite" }}><IconRefresh size={12} /></div>
   );
   if (status === "error") return (
-    <div style={{ width: 28, height: 28, borderRadius: "50%", background: "rgba(239,68,68,0.1)", color: "#f87171", border: "1px solid rgba(239,68,68,0.25)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, flexShrink: 0 }}>✕</div>
+    <div style={{ ...base, background: "rgba(239,68,68,0.1)", color: "#f87171", border: "1px solid rgba(239,68,68,0.25)" }}><IconX size={12} /></div>
   );
   return (
-    <div style={{ width: 28, height: 28, borderRadius: "50%", background: "var(--surface2)", color: "var(--text-muted)", border: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, flexShrink: 0 }}>—</div>
+    <div style={{ ...base, background: "var(--surface2)", color: "var(--text-muted)", border: "1px solid var(--border)", fontSize: 11 }}>—</div>
   );
 }
 
@@ -182,9 +191,9 @@ export function ProjectDetailPage() {
             <button
               onClick={() => { triggerRun.mutate(); setTab("pipeline"); }}
               disabled={triggerRun.isPending}
-              style={{ padding: "7px 14px", borderRadius: 8, background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)", fontSize: 12, cursor: "pointer" }}
+              style={{ padding: "7px 14px", borderRadius: 8, background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)", fontSize: 12, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}
             >
-              ⟳ Run Pipeline
+              <IconRefresh size={12} /> Run Pipeline
             </button>
           )}
         </div>
@@ -210,7 +219,7 @@ export function ProjectDetailPage() {
         <>
           {ideas && ideas.length > 0 ? (
             <>
-              {ideas.map(idea => <IdeaCard key={idea.id} idea={idea} />)}
+              {ideas.map(idea => <IdeaCard key={idea.id} idea={idea} projectId={id} />)}
               <div style={{ textAlign: "center", padding: "20px 0" }}>
                 <p style={{ fontSize: 13, color: "var(--text-muted)" }}>
                   {ideas.length} idea{ideas.length !== 1 ? "s" : ""} generated
@@ -219,7 +228,7 @@ export function ProjectDetailPage() {
             </>
           ) : (
             <div style={{ textAlign: "center", padding: "60px 20px" }}>
-              <div style={{ fontSize: 32, marginBottom: 12 }}>✦</div>
+              <div style={{ marginBottom: 12, color: "var(--text-muted)" }}><IconSparkle size={32} /></div>
               <h3 style={{ fontSize: 16, fontWeight: 600, color: "var(--text-primary)", marginBottom: 8 }}>No ideas yet</h3>
               <p style={{ fontSize: 14, color: "var(--text-muted)", marginBottom: 20 }}>Run the pipeline to generate domain-specific ideas.</p>
               <button
@@ -246,8 +255,12 @@ export function ProjectDetailPage() {
                     {isRunning ? "Pipeline in progress…" : `Completed · ${runStatus.current_run.ideas_generated} ideas generated`}
                   </p>
                 </div>
-                <span style={{ fontSize: 24, fontWeight: 700, color: "var(--accent)" }}>
-                  {runStatus.current_run.status === "running" ? "…" : runStatus.current_run.status === "done" ? "✓" : "✕"}
+                <span style={{ display: "flex", alignItems: "center", color: runStatus.current_run.status === "error" ? "#f87171" : runStatus.current_run.status === "done" ? "#4ade80" : "var(--accent)" }}>
+                  {runStatus.current_run.status === "running"
+                    ? <span style={{ fontSize: 22, fontWeight: 700 }}>…</span>
+                    : runStatus.current_run.status === "done"
+                    ? <IconCheck size={22} />
+                    : <IconX size={22} />}
                 </span>
               </div>
               {isRunning && (
