@@ -5,8 +5,8 @@ import { IdeaCard } from "../components/IdeaCard";
 export function FeedPage() {
   const { data, isLoading, error } = useToday();
 
-  if (isLoading) return <p style={{ padding: "40px 24px", color: "var(--text-muted)" }}>Loading today's ideas...</p>;
-  if (error) return <p style={{ padding: "40px 24px", color: "var(--badge-emerging-text)" }}>Failed to load feed.</p>;
+  if (isLoading && !data) return <p style={{ padding: "40px 24px", color: "var(--text-muted)" }}>Loading today's ideas...</p>;
+  if (error && !data) return <p style={{ padding: "40px 24px", color: "var(--badge-emerging-text)" }}>Failed to load feed.</p>;
   if (!data || data.ideas.length === 0) return (
     <div style={{ padding: "40px 24px" }}>
       <p style={{ color: "var(--text-muted)", fontSize: 15 }}>No ideas yet — run the pipeline to generate some.</p>

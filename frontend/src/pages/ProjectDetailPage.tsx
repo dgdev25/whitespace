@@ -136,7 +136,7 @@ export function ProjectDetailPage() {
   const [focusDraft, setFocusDraft] = useState("");
 
   const { data: project, isLoading: projectLoading } = useProject(id);
-  const { data: ideas } = useProjectIdeas(id);
+  const { data: ideas, isLoading: ideasLoading } = useProjectIdeas(id);
   const { data: runs } = useProjectRuns(id);
   const { data: runStatus } = useProjectRunStatus(id, tab === "pipeline");
   const triggerRun = useTriggerProjectRun(id);
@@ -220,7 +220,9 @@ export function ProjectDetailPage() {
       {/* IDEAS TAB */}
       {tab === "ideas" && (
         <>
-          {ideas && ideas.length > 0 ? (
+          {ideasLoading ? (
+            <div style={{ padding: "60px 20px", textAlign: "center", color: "var(--text-muted)", fontSize: 14 }}>Loading ideas…</div>
+          ) : ideas && ideas.length > 0 ? (
             <>
               {ideas.map(idea => <IdeaCard key={idea.id} idea={idea} projectId={id} />)}
               <div style={{ textAlign: "center", padding: "20px 0" }}>
