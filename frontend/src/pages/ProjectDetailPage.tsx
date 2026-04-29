@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { useProject, useProjectIdeas, useProjectRuns, useProjectRunStatus, useTriggerProjectRun } from "../hooks/useProjects";
+import { useProject, useProjectIdeas, useProjectRuns, useProjectRunStatus, useTriggerProjectRun, useUpdateProject } from "../hooks/useProjects";
 import { IconCheck, IconRefresh, IconX, IconHeart, IconSparkle, IconStar } from "../components/Icons";
 import type { ProjectIdea, ProjectRun } from "../api/types";
 
@@ -132,12 +132,15 @@ export function ProjectDetailPage() {
   const navigate = useNavigate();
   const id = Number(projectId);
   const [tab, setTab] = useState<DetailTab>("ideas");
+  const [editingFocus, setEditingFocus] = useState(false);
+  const [focusDraft, setFocusDraft] = useState("");
 
   const { data: project, isLoading: projectLoading } = useProject(id);
   const { data: ideas } = useProjectIdeas(id);
   const { data: runs } = useProjectRuns(id);
   const { data: runStatus } = useProjectRunStatus(id, tab === "pipeline");
   const triggerRun = useTriggerProjectRun(id);
+  const updateProject = useUpdateProject(id);
 
   const isRunning = runStatus?.running ?? false;
   const meta = project ? dm(project.domain) : dm("ai");
@@ -374,12 +377,47 @@ export function ProjectDetailPage() {
               </div>
             ))}
           </div>
-          {project.focus_statement && (
+          <div style={{ height: 1, background: "var(--border)", margin: "20px 0" }} />
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+            <h3 style={{ fontSize: 15, fontWeight: 600 }}>Research Focus</h3>
+            {!editingFocus && (
+              <button
+                onClick={() => { setFocusDraft(project.focus_statement ?? ""); setEditingFocus(true); }}
+                style={{ fontSize: 12, fontWeight: 500, color: "var(--text-secondary)", background: "none", border: "1px solid var(--border)", borderRadius: 6, padding: "4px 10px", cursor: "pointer" }}
+              >
+                Edit
+              </button>
+            )}
+          </div>
+          {editingFocus ? (
             <>
-              <div style={{ height: 1, background: "var(--border)", margin: "20px 0" }} />
-              <h3 style={{ fontSize: 15, fontWeight: 600, marginBottom: 8 }}>Research Focus</h3>
-              <p style={{ fontSize: 14, color: "var(--text-secondary)", lineHeight: 1.6 }}>{project.focus_statement}</p>
+              <textarea
+                value={focusDraft}
+                onChange={e => setFocusDraft(e.target.value)}
+                maxLength={2000}
+                rows={5}
+                style={{ width: "100%", fontSize: 14, lineHeight: 1.6, padding: "10px 12px", borderRadius: 8, border: "1px solid var(--border)", background: "var(--bg)", color: "var(--text)", resize: "vertical", boxSizing: "border-box" }}
+              />
+              <div style={{ display: "flex", gap: 8, marginTop: 10, justifyContent: "flex-end" }}>
+                <button
+                  onClick={() => setEditingFocus(false)}
+                  style={{ fontSize: 13, fontWeight: 500, padding: "6px 14px", borderRadius: 7, border: "1px solid var(--border)", background: "none", color: "var(--text-secondary)", cursor: "pointer" }}
+                >
+                  Cancel
+                </button>
+                <button
+                  disabled={updateProject.isPending}
+                  onClick={() => updateProject.mutate({ focus_statement: focusDraft }, { onSuccess: () => setEditingFocus(false) })}
+                  style={{ fontSize: 13, fontWeight: 600, padding: "6px 14px", borderRadius: 7, border: "none", background: "var(--accent, #6366f1)", color: "#fff", cursor: "pointer", opacity: updateProject.isPending ? 0.6 : 1 }}
+                >
+                  {updateProject.isPending ? "Saving…" : "Save"}
+                </button>
+              </div>
             </>
+          ) : (
+            <p style={{ fontSize: 14, color: project.focus_statement ? "var(--text-secondary)" : "var(--text-tertiary, var(--text-secondary))", lineHeight: 1.6, fontStyle: project.focus_statement ? "normal" : "italic" }}>
+              {project.focus_statement || "No research focus set."}
+            </p>
           )}
         </div>
       )}

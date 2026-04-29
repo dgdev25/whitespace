@@ -2,6 +2,16 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../api/client";
 import type { ProjectCreate } from "../api/types";
 
+export function useUpdateProject(id: number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: Partial<ProjectCreate>) => api.updateProject(id, data),
+    onSuccess: (updated) => {
+      qc.setQueryData(["project", id], updated);
+    },
+  });
+}
+
 export function useProjects() {
   return useQuery({ queryKey: ["projects"], queryFn: () => api.listProjects() });
 }
