@@ -6,99 +6,109 @@ import requests
 
 logger = logging.getLogger(__name__)
 
-_BASE = "https://aclanthology.org"
-_HEADERS = {"User-Agent": "Whitespace-Research-Bot/2.0 (academic research tool)"}
+_BASE = "https://api.openalex.org"
+_HEADERS = {"User-Agent": "Whitespace-Research-Bot/2.0 (mailto:research@whitespace.ai)"}
 _TIMEOUT = 20
-_PER_VOLUME = 20
+_PER_QUERY = 25
 
-# Recent high-value proceedings. Volume IDs follow the pattern {year}.{venue}-{type}.
-_VOLUMES = [
-    "2024.acl-long",
-    "2024.acl-short",
-    "2024.findings-acl",
-    "2024.emnlp-main",
-    "2024.findings-emnlp",
-    "2024.naacl-long",
-    "2024.naacl-short",
-    "2024.eacl-long",
-    "2025.coling-main",
+# NLP/CL-specific queries distinct from the broad AI/ML queries in fetch_open_alex.py.
+# Targets research published in or associated with ACL-family venues.
+_QUERIES = [
+    "machine translation sequence to sequence NLP",
+    "named entity recognition information extraction NLP",
+    "question answering reading comprehension language model",
+    "semantic parsing dialogue systems conversational",
+    "text summarisation abstractive language generation",
 ]
 
 
-def _uid(paper_id: str) -> str:
-    return hashlib.sha256(f"acl:{paper_id}".encode()).hexdigest()[:32]
+def _uid(oa_id: str) -> str:
+    return hashlib.sha256(f"oa-acl:{oa_id}".encode()).hexdigest()[:32]
 
 
-def _fetch_volume(vol_id: str, existing_ids: set[str]) -> list[dict]:
+def _reconstruct_abstract(inverted: dict | None) -> str:
+    if not inverted:
+        return ""
+    positions: dict[int, str] = {}
+    for word, locs in inverted.items():
+        for pos in locs:
+            positions[pos] = word
+    return " ".join(positions[i] for i in sorted(positions))
+
+
+def _fetch_query(query: str, existing_ids: set[str]) -> list[dict]:
     try:
         resp = requests.get(
-            f"{_BASE}/volumes/{vol_id}.json",
+            f"{_BASE}/works",
+            params={
+                "search": query,
+                "filter": "publication_year:2023|2024|2025,type:article",
+                "sort": "cited_by_count:desc",
+                "per-page": str(_PER_QUERY),
+                "select": "id,title,abstract_inverted_index,authorships,publication_date,primary_location,doi",
+                "mailto": "research@whitespace.ai",
+            },
             headers=_HEADERS,
             timeout=_TIMEOUT,
         )
-        if resp.status_code == 404:
-            return []
         resp.raise_for_status()
-        papers_raw = resp.json()
+        data = resp.json()
     except requests.RequestException as exc:
-        logger.warning("[ACL:%s] request failed: %s", vol_id, exc)
+        logger.warning("[ACL/OpenAlex] request failed for query %r: %s", query, exc)
         return []
 
-    if not isinstance(papers_raw, list):
-        papers_raw = papers_raw.get("papers", []) if isinstance(papers_raw, dict) else []
-
     results: list[dict] = []
-    venue_tag = vol_id.split(".")[1].split("-")[0] if "." in vol_id else "acl"
-
-    for p in papers_raw[:_PER_VOLUME]:
-        paper_id = p.get("id", "")
-        if not paper_id:
+    for work in data.get("results", []):
+        oa_id = work.get("id", "")
+        if not oa_id:
             continue
-        uid = _uid(paper_id)
+        uid = _uid(oa_id)
         if uid in existing_ids:
             continue
 
-        abstract = (p.get("abstract") or "").strip()
+        abstract = _reconstruct_abstract(work.get("abstract_inverted_index"))
         if not abstract:
             continue
 
         authors = ", ".join(
-            a.get("full", a.get("last", ""))
-            for a in (p.get("author") or [])[:5]
+            a.get("author", {}).get("display_name", "")
+            for a in (work.get("authorships") or [])[:5]
         )
-        year = str(p.get("year", ""))
+        loc = work.get("primary_location") or {}
+        url = loc.get("landing_page_url") or work.get("doi") or ""
 
         results.append({
             "arxiv_id": uid,
-            "title": (p.get("title") or "").strip(),
+            "title": (work.get("title") or "").strip(),
             "authors": authors,
             "abstract": abstract,
             "full_text": abstract,
-            "categories": f"acl,{venue_tag}",
-            "published_date": year,
-            "url": f"{_BASE}/{paper_id}",
+            "categories": "acl_anthology,nlp,cl",
+            "published_date": work.get("publication_date", ""),
+            "url": url,
             "source": "acl_anthology",
         })
 
-    logger.info("[ACL:%s] %d new papers", vol_id, len(results))
+    logger.info("[ACL/OpenAlex] query %r → %d new papers", query, len(results))
     return results
 
 
 def fetch_acl_anthology_papers(existing_ids: set[str]) -> list[dict]:
-    """Fetch recent NLP papers from ACL Anthology proceedings.
+    """Fetch recent NLP/CL papers via OpenAlex using conference-focused queries.
 
-    Targets major venues: ACL, EMNLP, NAACL, COLING, EACL.
+    Uses ACL-venue-targeted keyword searches distinct from the broad AI/ML
+    queries in fetch_open_alex.py. No API key required.
     Returns dicts in the standard paper schema with source='acl_anthology'.
     """
     all_papers: list[dict] = []
     seen: set[str] = set(existing_ids)
 
-    for i, vol_id in enumerate(_VOLUMES):
+    for i, query in enumerate(_QUERIES):
         if i > 0:
             time.sleep(1)
-        papers = _fetch_volume(vol_id, seen)
+        papers = _fetch_query(query, seen)
         all_papers.extend(papers)
         seen |= {p["arxiv_id"] for p in papers}
 
-    logger.info("ACL Anthology fetch complete — %d new papers", len(all_papers))
+    logger.info("ACL/OpenAlex fetch complete — %d new papers total", len(all_papers))
     return all_papers
