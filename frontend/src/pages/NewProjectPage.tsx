@@ -62,6 +62,15 @@ const DEFAULT_PIPELINE = (domain: Domain): Record<string, number> => {
   return base;
 };
 
+const DOMAIN_ARXIV_CONFIG: Record<Domain, { categories: string[]; orgs: string[] | null }> = {
+  ai:         { categories: ["cs.AI", "cs.LG", "cs.CL", "cs.MA", "cs.NE", "cs.RO", "stat.ML"], orgs: ["DeepMind", "Anthropic", "OpenAI"] },
+  biomedical: { categories: ["q-bio.NC", "q-bio.GN", "q-bio.QM", "q-bio.MN", "stat.ML", "cs.LG"], orgs: null },
+  climate:    { categories: ["physics.ao-ph", "eess.SP", "cs.LG", "stat.AP", "math.OC"], orgs: null },
+  finance:    { categories: ["q-fin.TR", "q-fin.PM", "q-fin.RM", "q-fin.CP", "cs.LG", "stat.ML"], orgs: null },
+  materials:  { categories: ["cond-mat.mtrl-sci", "cond-mat.soft", "physics.chem-ph", "cs.LG"], orgs: null },
+  custom:     { categories: [], orgs: null },
+};
+
 const DOMAIN_COLOR: Record<Domain, string> = {
   ai: "#6366f1", biomedical: "var(--domain-bio)", climate: "var(--domain-climate)",
   finance: "var(--domain-finance)", materials: "var(--domain-materials)", custom: "var(--accent)",
@@ -152,9 +161,12 @@ export function NewProjectPage() {
   async function handleCreate() {
     if (!domain || !name.trim()) return;
     setCreateError(null);
+    const arxivCfg = DOMAIN_ARXIV_CONFIG[domain];
     const sourceConfig = {
       enabled_sources: enabledSources,
-      orgs: null, categories: null, github_repos: [],
+      orgs: arxivCfg.orgs,
+      categories: arxivCfg.categories.length > 0 ? arxivCfg.categories : null,
+      github_repos: [],
     };
     const pipelineConfig = {
       ideas_per_run: ideasPerRun,

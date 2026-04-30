@@ -359,19 +359,48 @@ export function ProjectDetailPage() {
 
       {/* SOURCES TAB (stub) */}
       {tab === "sources" && (
-        <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 12, padding: 24 }}>
-          <h3 style={{ fontSize: 15, fontWeight: 600, marginBottom: 16 }}>Configured Sources</h3>
-          {Object.entries(project.source_config?.enabled_sources ?? {}).map(([key, enabled]) => (
-            <div key={key} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 0", borderBottom: "1px solid var(--border)" }}>
-              <span style={{ fontSize: 14, fontWeight: 500, textTransform: "capitalize" }}>{key.replace(/_/g, " ")}</span>
-              <span style={{ fontSize: 12, color: enabled ? "#4ade80" : "var(--text-muted)", background: enabled ? "rgba(34,197,94,0.1)" : "var(--surface2)", padding: "2px 10px", borderRadius: 999, border: `1px solid ${enabled ? "rgba(34,197,94,0.25)" : "var(--border)"}` }}>
-                {enabled ? "Active" : "Disabled"}
-              </span>
-            </div>
-          ))}
-          {Object.keys(project.source_config?.enabled_sources ?? {}).length === 0 && (
-            <p style={{ color: "var(--text-muted)", fontSize: 14 }}>Using default source configuration.</p>
-          )}
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 12, padding: 24 }}>
+            <h3 style={{ fontSize: 15, fontWeight: 600, marginBottom: 16 }}>Configured Sources</h3>
+            {Object.entries(project.source_config?.enabled_sources ?? {}).map(([key, enabled]) => (
+              <div key={key} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 0", borderBottom: "1px solid var(--border)" }}>
+                <span style={{ fontSize: 14, fontWeight: 500, textTransform: "capitalize" }}>{key.replace(/_/g, " ")}</span>
+                <span style={{ fontSize: 12, color: enabled ? "#4ade80" : "var(--text-muted)", background: enabled ? "rgba(34,197,94,0.1)" : "var(--surface2)", padding: "2px 10px", borderRadius: 999, border: `1px solid ${enabled ? "rgba(34,197,94,0.25)" : "var(--border)"}` }}>
+                  {enabled ? "Active" : "Disabled"}
+                </span>
+              </div>
+            ))}
+            {Object.keys(project.source_config?.enabled_sources ?? {}).length === 0 && (
+              <p style={{ color: "var(--text-muted)", fontSize: 14 }}>Using default source configuration.</p>
+            )}
+          </div>
+
+          <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 12, padding: 24 }}>
+            <h3 style={{ fontSize: 15, fontWeight: 600, marginBottom: 4 }}>arXiv Filter</h3>
+            <p style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 16 }}>Categories and organisations used when fetching arXiv papers for this project.</p>
+
+            <p style={{ fontSize: 12, fontWeight: 500, color: "var(--text-secondary)", marginBottom: 8 }}>Organisations</p>
+            {(project.source_config?.orgs ?? []).length > 0 ? (
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 16 }}>
+                {(project.source_config!.orgs as string[]).map(o => (
+                  <span key={o} style={{ background: "var(--surface2)", border: "1px solid var(--border)", padding: "3px 10px", borderRadius: 999, fontSize: 12, color: "var(--text-secondary)" }}>{o}</span>
+                ))}
+              </div>
+            ) : (
+              <p style={{ fontSize: 13, color: "var(--text-muted)", marginBottom: 16 }}>Using global settings</p>
+            )}
+
+            <p style={{ fontSize: 12, fontWeight: 500, color: "var(--text-secondary)", marginBottom: 8 }}>Categories</p>
+            {(project.source_config?.categories ?? []).length > 0 ? (
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                {(project.source_config!.categories as string[]).map(c => (
+                  <span key={c} style={{ background: "var(--surface2)", border: "1px solid var(--border)", padding: "3px 10px", borderRadius: 999, fontSize: 12, color: "var(--text-secondary)", fontFamily: "ui-monospace, monospace" }}>{c}</span>
+                ))}
+              </div>
+            ) : (
+              <p style={{ fontSize: 13, color: "var(--text-muted)" }}>Using global settings</p>
+            )}
+          </div>
         </div>
       )}
 
