@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { useProject, useProjectIdeas, useProjectRuns, useProjectRunStatus, useTriggerProjectRun, useUpdateProject } from "../hooks/useProjects";
+import { useProject, useProjectIdeas, useProjectRuns, useProjectRunStatus, useTriggerProjectRun, useUpdateProject, useDeleteProject } from "../hooks/useProjects";
 import { IconCheck, IconRefresh, IconX, IconHeart, IconSparkle, IconStar } from "../components/Icons";
 import type { ProjectIdea, ProjectRun } from "../api/types";
 
@@ -141,6 +141,7 @@ export function ProjectDetailPage() {
   const { data: runStatus } = useProjectRunStatus(id, tab === "pipeline");
   const triggerRun = useTriggerProjectRun(id);
   const updateProject = useUpdateProject(id);
+  const deleteProject = useDeleteProject();
 
   const isRunning = runStatus?.running ?? false;
   const meta = project ? dm(project.domain) : dm("ai");
@@ -199,6 +200,17 @@ export function ProjectDetailPage() {
               <IconRefresh size={12} /> Run Pipeline
             </button>
           )}
+          <button
+            onClick={() => {
+              if (confirm(`Delete "${project.name}"? This will permanently remove all its ideas and pipeline history.`)) {
+                deleteProject.mutate(id, { onSuccess: () => navigate("/projects") });
+              }
+            }}
+            disabled={deleteProject.isPending}
+            style={{ padding: "7px 14px", borderRadius: 8, background: "none", border: "1px solid rgba(239,68,68,0.4)", color: "#f87171", fontSize: 12, cursor: "pointer" }}
+          >
+            Delete
+          </button>
         </div>
       </div>
 
