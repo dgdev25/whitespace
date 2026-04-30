@@ -31,13 +31,13 @@ async def today_feed(
     )
     ideas = result.scalars().all()
 
-    # Fallback: if no ideas for today, return most recent featured ideas
+    # Fallback: no ideas generated today — return all persisted ideas, newest run first
     if not ideas and offset == 0:
         result = await session.execute(
             select(Idea)
-            .where(Idea.is_featured == True)  # noqa: E712
-            .order_by(Idea.novelty_score.desc())
+            .order_by(Idea.created_at.desc(), Idea.novelty_score.desc())
             .limit(limit)
+            .offset(offset)
         )
         ideas = result.scalars().all()
 
