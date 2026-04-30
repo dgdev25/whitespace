@@ -27,6 +27,9 @@ export default function App() {
         <Route path="/projects/:projectId" element={<ProjectDetailPage />} />
         <Route path="/projects/:projectId/ideas/:ideaId" element={<ProjectIdeaDetailPage />} />
         <Route path="/settings" element={<Navigate to="/settings/runner" replace />} />
+        <Route path="/settings/pipeline" element={<Navigate to="/settings/pipeline/limits" replace />} />
+        <Route path="/settings/feeds" element={<Navigate to="/settings/feeds/sources" replace />} />
+        <Route path="/settings/:tab/:subtab" element={<SettingsPage />} />
         <Route path="/settings/:tab" element={<SettingsPage />} />
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>

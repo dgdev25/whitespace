@@ -80,10 +80,14 @@ function parseGithubHandle(input: string): string {
 }
 
 export function SettingsPage() {
-  const { tab: tabParam } = useParams<{ tab: string }>();
+  const { tab: tabParam, subtab: subtabParam } = useParams<{ tab: string; subtab?: string }>();
   const navigate = useNavigate();
   const tab: Tab = VALID_TABS.includes(tabParam as Tab) ? (tabParam as Tab) : "runner";
-  const goTab = (t: Tab) => navigate(`/settings/${t}`, { replace: true });
+  const goTab = (t: Tab) => {
+    if (t === "pipeline") navigate("/settings/pipeline/limits", { replace: true });
+    else if (t === "feeds") navigate("/settings/feeds/sources", { replace: true });
+    else navigate(`/settings/${t}`, { replace: true });
+  };
 
   const { data: runners } = useRunners();
   const { data: config } = useSystemConfig();
@@ -98,8 +102,8 @@ export function SettingsPage() {
   const toggleSource = useToggleSource();
   const importOrg = useImportOrg();
   const { data: orgImport } = useOrgImportStatus();
-  const [pipelineTab, setPipelineTab] = useState<PipelineTab>("limits");
-  const [feedsTab, setFeedsTab] = useState<FeedsTab>("sources");
+  const pipelineTab: PipelineTab = (["limits", "schedule"] as PipelineTab[]).includes(subtabParam as PipelineTab) ? subtabParam as PipelineTab : "limits";
+  const feedsTab: FeedsTab = (["sources", "arxiv", "github"] as FeedsTab[]).includes(subtabParam as FeedsTab) ? subtabParam as FeedsTab : "sources";
   const [orgInput, setOrgInput] = useState<string>("");
   const [scanInitiated, setScanInitiated] = useState(false);
   const [intervalInput, setIntervalInput] = useState<string>("");
@@ -224,7 +228,7 @@ export function SettingsPage() {
               { key: "schedule", label: "Schedule" },
             ]}
             active={pipelineTab}
-            onChange={setPipelineTab}
+            onChange={(t) => navigate(`/settings/pipeline/${t}`, { replace: true })}
           />
 
           {pipelineTab === "limits" && (
@@ -360,7 +364,7 @@ export function SettingsPage() {
               { key: "github", label: "GitHub" },
             ]}
             active={feedsTab}
-            onChange={setFeedsTab}
+            onChange={(t) => navigate(`/settings/feeds/${t}`, { replace: true })}
           />
 
           {feedsTab === "sources" && (
@@ -408,8 +412,7 @@ export function SettingsPage() {
                       setDataSources.mutate({ orgs: next, categories: config.active_categories });
                     }}
                   />
-                  <ToggleTagSection
-                    label="Categories"
+                  <GroupedCategorySection
                     all={config.arxiv_categories}
                     active={config.active_categories}
                     onToggle={(tag) => {
@@ -691,6 +694,77 @@ function Toggle({ on, disabled, onToggle }: { on: boolean; disabled: boolean; on
         boxShadow: "0 1px 3px rgba(0,0,0,0.25)", transition: "left 0.2s",
       }} />
     </button>
+  );
+}
+
+const CATEGORY_GROUPS: { label: string; categories: string[] }[] = [
+  { label: "Core AI / ML", categories: ["cs.AI", "cs.LG", "cs.NE", "stat.ML"] },
+  { label: "Language & NLP", categories: ["cs.CL", "cs.IR"] },
+  { label: "Vision & Perception", categories: ["cs.CV", "eess.IV"] },
+  { label: "Systems & Engineering", categories: ["cs.AR", "cs.DC", "cs.PL", "cs.SE", "cs.SY", "eess.SY"] },
+  { label: "Applications", categories: ["cs.CR", "cs.DB", "cs.GT", "cs.HC", "cs.MA", "cs.RO"] },
+  { label: "Signal & Speech", categories: ["eess.AS", "eess.SP"] },
+  { label: "Math & Optimization", categories: ["math.OC", "stat.AP"] },
+  { label: "Quantitative Biology", categories: ["q-bio.NC"] },
+];
+
+function GroupedCategorySection({ all, active, onToggle }: {
+  all: string[]; active: string[]; onToggle: (tag: string) => void;
+}) {
+  const allSet = new Set(all);
+  const groupedSet = new Set(CATEGORY_GROUPS.flatMap(g => g.categories));
+  const ungrouped = all.filter(c => !groupedSet.has(c));
+
+  const chipStyle = (on: boolean): React.CSSProperties => ({
+    display: "inline-flex", alignItems: "center",
+    background: on ? "var(--accent)" : "var(--bg)",
+    border: on ? "1px solid var(--accent)" : "1px solid var(--border)",
+    padding: "4px 11px", borderRadius: 999,
+    fontSize: 12, fontWeight: 500,
+    color: on ? "white" : "var(--text-muted)",
+    cursor: "pointer", transition: "all 0.15s",
+    fontFamily: "ui-monospace, monospace",
+    letterSpacing: "0.01em",
+  });
+
+  return (
+    <div style={{ marginBottom: 20 }}>
+      <p style={{ fontSize: 13, fontWeight: 500, color: "var(--text-secondary)", marginBottom: 14 }}>Categories</p>
+      <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+        {CATEGORY_GROUPS.map(group => {
+          const cats = group.categories.filter(c => allSet.has(c));
+          if (cats.length === 0) return null;
+          return (
+            <div key={group.label}>
+              <p style={{ fontSize: 10, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 8 }}>
+                {group.label}
+              </p>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                {cats.map(t => (
+                  <button key={t} onClick={() => onToggle(t)} style={chipStyle(active.includes(t))}>
+                    {t}
+                  </button>
+                ))}
+              </div>
+            </div>
+          );
+        })}
+        {ungrouped.length > 0 && (
+          <div>
+            <p style={{ fontSize: 10, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 8 }}>
+              Other
+            </p>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+              {ungrouped.map(t => (
+                <button key={t} onClick={() => onToggle(t)} style={chipStyle(active.includes(t))}>
+                  {t}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
   );
 }
 
