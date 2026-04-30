@@ -1,24 +1,24 @@
 <!-- TURBO:AUTO-START -->
 # Project: backend
 
-*Auto-generated at 2026-04-29 14:24 — do not edit between markers*
+*Auto-generated at 2026-04-30 16:32 — do not edit between markers*
 
 ## Git State
 - **Branch:** `master`
 - **Remote:** `https://github.com/dgdev25/whitespace.git`
-- **Commits:** 103
-- **Uncommitted changes:** 1 file(s)
+- **Commits:** 110
+- **Uncommitted changes:** 2 file(s)
 
 ### Recent Commits
 ```
+8a8a672 feat: add CISA KEV + SSRN sources and Cyber/Risk domain
+7dd542f fix(projects): wire domain-specific arXiv categories and orgs into source_config on creation
+7b383d3 feat(projects): add delete button to project detail page header
+81472b1 feat(settings): URL-routed sub-tabs and expanded arXiv category picker
+e50f435 fix(acl-source): replace broken ACL Anthology fetcher with OpenAlex NLP queries
+d623c2a fix(ideas): always show persisted ideas from DB regardless of run date
+7d271f1 fix(cache): persist React Query cache to localStorage so ideas survive restarts
 2eb3ae1 fix(ui): show loading state for ideas and preserve stale data on error
-d5e4ce3 feat(projects): make Research Focus editable on project detail page
-b39a42b fix(github): bulk import now populates reference list + add repo pagination
-d485ef5 feat: project ideas, PRD generation, GitHub reference repos, security hardening
-adce6a2 feat(projects): multi-domain project system with wizard, ideas, and pipeline views
-6a7e7e7 feat(settings): add ACL/OpenAlex sources, per-source toggles, nested sub-tabs
-73e876d feat: enrich Research Basis with source titles, add GitHub to pipeline panel, paginate history
-8c7b445 fix: pass real URLs into build prompts and render correct links per source type
 ```
 
 ## Tech Stack
@@ -54,6 +54,103 @@ pyproject.toml
 ```
 
 <!-- TURBO:AUTO-END -->
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
