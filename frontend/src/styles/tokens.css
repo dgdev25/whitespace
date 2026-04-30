@@ -28,6 +28,10 @@
   --domain-materials-dim: rgba(147,51,234,0.10);
   --domain-materials-border: rgba(147,51,234,0.30);
   --domain-materials-text: #9333ea;
+  --domain-cyber: #0369a1;
+  --domain-cyber-dim: rgba(3,105,161,0.10);
+  --domain-cyber-border: rgba(3,105,161,0.30);
+  --domain-cyber-text: #0369a1;
   --accent-hover: #1d4ed8;
   --badge-novel-bg: #dcfce7;
   --badge-novel-text: #16a34a;
@@ -76,6 +80,10 @@
   --domain-materials-dim: rgba(168,85,247,0.12);
   --domain-materials-border: rgba(168,85,247,0.30);
   --domain-materials-text: #c084fc;
+  --domain-cyber: #38bdf8;
+  --domain-cyber-dim: rgba(56,189,248,0.12);
+  --domain-cyber-border: rgba(56,189,248,0.30);
+  --domain-cyber-text: #38bdf8;
   --accent-hover: #93aef5;
   --badge-novel-bg: #14251a;
   --badge-novel-text: #4ade80;

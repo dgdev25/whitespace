@@ -15,6 +15,8 @@ from worker.stages.fetch_github import fetch_github_repos
 from worker.stages.fetch_semantic_scholar import fetch_semantic_scholar_papers
 from worker.stages.fetch_acl_anthology import fetch_acl_anthology_papers
 from worker.stages.fetch_open_alex import fetch_open_alex_papers
+from worker.stages.fetch_cisa_kev import fetch_cisa_kev_vulnerabilities
+from worker.stages.fetch_ssrn import fetch_ssrn_papers
 from worker.stages.analyse import analyse_papers
 from worker.stages.critique import critique_analyses
 from worker.stages.gap_map import map_gaps
@@ -119,10 +121,29 @@ def run_daily_pipeline(
             prog.emit("fetch_oa", "OpenAlex: disabled", "done")
         all_existing |= {p["arxiv_id"] for p in raw_oa}
 
-        raw_all = raw_arxiv + raw_blogs + raw_s2 + raw_github + raw_acl + raw_oa
+        raw_cisa: list[dict] = []
+        if _enabled.get("cisa_kev", False):
+            prog.emit("fetch_cisa", "Fetching CISA KEV vulnerabilities…", "running")
+            raw_cisa = fetch_cisa_kev_vulnerabilities(existing_ids=all_existing)
+            prog.emit("fetch_cisa", f"CISA KEV: {len(raw_cisa)} new vulnerabilities", "done")
+        else:
+            prog.emit("fetch_cisa", "CISA KEV: disabled", "done")
+        all_existing |= {p["arxiv_id"] for p in raw_cisa}
+
+        raw_ssrn: list[dict] = []
+        if _enabled.get("ssrn", False):
+            prog.emit("fetch_ssrn", "Fetching insurance & risk management papers…", "running")
+            raw_ssrn = fetch_ssrn_papers(existing_ids=all_existing)
+            prog.emit("fetch_ssrn", f"SSRN/Risk: {len(raw_ssrn)} new papers", "done")
+        else:
+            prog.emit("fetch_ssrn", "SSRN/Risk: disabled", "done")
+        all_existing |= {p["arxiv_id"] for p in raw_ssrn}
+
+        raw_all = raw_arxiv + raw_blogs + raw_s2 + raw_github + raw_acl + raw_oa + raw_cisa + raw_ssrn
         logger.info(
-            "Fetched — arXiv: %d, blogs: %d, S2: %d, GitHub: %d, ACL: %d, OpenAlex: %d",
+            "Fetched — arXiv: %d, blogs: %d, S2: %d, GitHub: %d, ACL: %d, OpenAlex: %d, CISA: %d, SSRN: %d",
             len(raw_arxiv), len(raw_blogs), len(raw_s2), len(raw_github), len(raw_acl), len(raw_oa),
+            len(raw_cisa), len(raw_ssrn),
         )
 
         if raw_all:

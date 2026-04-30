@@ -53,6 +53,8 @@ const FEED_SOURCES: { key: string; label: string; description: string }[] = [
   { key: "github", label: "GitHub", description: "Repository READMEs from tracked repos and imported orgs." },
   { key: "acl_anthology", label: "ACL Anthology", description: "NLP and CL papers from ACL, EMNLP, NAACL, COLING, and more — fills gaps not covered by arXiv." },
   { key: "open_alex", label: "OpenAlex", description: "Broad academic coverage with keyword-based search across all institutions." },
+  { key: "cisa_kev", label: "CISA KEV", description: "CISA Known Exploited Vulnerabilities — actively weaponised CVEs from the last 90 days. Essential for cyber accumulation risk." },
+  { key: "ssrn", label: "SSRN / Risk", description: "Insurance, reinsurance and cyber risk academic papers sourced via actuarial and risk management literature searches." },
 ];
 
 function parseGithubRepoSlug(input: string): string {

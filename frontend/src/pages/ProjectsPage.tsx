@@ -4,12 +4,13 @@ import { IconSparkle } from "../components/Icons";
 import type { Project } from "../api/types";
 
 const DOMAIN_META: Record<string, { label: string; colorVar: string; dimVar: string; borderVar: string; textVar: string }> = {
-  ai:         { label: "AI / ML",    colorVar: "--domain-ai",        dimVar: "--domain-ai-dim",        borderVar: "--domain-ai-border",        textVar: "--domain-ai-text" },
-  biomedical: { label: "Biomedical", colorVar: "--domain-bio",       dimVar: "--domain-bio-dim",       borderVar: "--domain-bio-border",       textVar: "--domain-bio-text" },
-  climate:    { label: "Climate",    colorVar: "--domain-climate",   dimVar: "--domain-climate-dim",   borderVar: "--domain-climate-border",   textVar: "--domain-climate-text" },
-  finance:    { label: "Finance",    colorVar: "--domain-finance",   dimVar: "--domain-finance-dim",   borderVar: "--domain-finance-border",   textVar: "--domain-finance-text" },
-  materials:  { label: "Materials",  colorVar: "--domain-materials", dimVar: "--domain-materials-dim", borderVar: "--domain-materials-border", textVar: "--domain-materials-text" },
-  custom:     { label: "Custom",     colorVar: "--domain-ai",        dimVar: "--domain-ai-dim",        borderVar: "--domain-ai-border",        textVar: "--domain-ai-text" },
+  ai:         { label: "AI / ML",      colorVar: "--domain-ai",        dimVar: "--domain-ai-dim",        borderVar: "--domain-ai-border",        textVar: "--domain-ai-text" },
+  biomedical: { label: "Biomedical",   colorVar: "--domain-bio",       dimVar: "--domain-bio-dim",       borderVar: "--domain-bio-border",       textVar: "--domain-bio-text" },
+  climate:    { label: "Climate",      colorVar: "--domain-climate",   dimVar: "--domain-climate-dim",   borderVar: "--domain-climate-border",   textVar: "--domain-climate-text" },
+  finance:    { label: "Finance",      colorVar: "--domain-finance",   dimVar: "--domain-finance-dim",   borderVar: "--domain-finance-border",   textVar: "--domain-finance-text" },
+  materials:  { label: "Materials",    colorVar: "--domain-materials", dimVar: "--domain-materials-dim", borderVar: "--domain-materials-border", textVar: "--domain-materials-text" },
+  cyber:      { label: "Cyber / Risk", colorVar: "--domain-cyber",     dimVar: "--domain-cyber-dim",     borderVar: "--domain-cyber-border",     textVar: "--domain-cyber-text" },
+  custom:     { label: "Custom",       colorVar: "--domain-ai",        dimVar: "--domain-ai-dim",        borderVar: "--domain-ai-border",        textVar: "--domain-ai-text" },
 };
 
 function domainMeta(domain: string) {

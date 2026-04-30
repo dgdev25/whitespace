@@ -7,12 +7,13 @@ import type { ProjectIdea, ProjectRun } from "../api/types";
 type DetailTab = "ideas" | "pipeline" | "sources" | "settings";
 
 const DOMAIN_META: Record<string, { label: string; color: string; dimColor: string; borderColor: string }> = {
-  ai:         { label: "AI / ML",    color: "var(--domain-ai-text)",        dimColor: "var(--domain-ai-dim)",        borderColor: "var(--domain-ai-border)" },
-  biomedical: { label: "Biomedical", color: "var(--domain-bio-text)",       dimColor: "var(--domain-bio-dim)",       borderColor: "var(--domain-bio-border)" },
-  climate:    { label: "Climate",    color: "var(--domain-climate-text)",   dimColor: "var(--domain-climate-dim)",   borderColor: "var(--domain-climate-border)" },
-  finance:    { label: "Finance",    color: "var(--domain-finance-text)",   dimColor: "var(--domain-finance-dim)",   borderColor: "var(--domain-finance-border)" },
-  materials:  { label: "Materials",  color: "var(--domain-materials-text)", dimColor: "var(--domain-materials-dim)", borderColor: "var(--domain-materials-border)" },
-  custom:     { label: "Custom",     color: "var(--domain-ai-text)",        dimColor: "var(--domain-ai-dim)",        borderColor: "var(--domain-ai-border)" },
+  ai:         { label: "AI / ML",      color: "var(--domain-ai-text)",        dimColor: "var(--domain-ai-dim)",        borderColor: "var(--domain-ai-border)" },
+  biomedical: { label: "Biomedical",   color: "var(--domain-bio-text)",       dimColor: "var(--domain-bio-dim)",       borderColor: "var(--domain-bio-border)" },
+  climate:    { label: "Climate",      color: "var(--domain-climate-text)",   dimColor: "var(--domain-climate-dim)",   borderColor: "var(--domain-climate-border)" },
+  finance:    { label: "Finance",      color: "var(--domain-finance-text)",   dimColor: "var(--domain-finance-dim)",   borderColor: "var(--domain-finance-border)" },
+  materials:  { label: "Materials",    color: "var(--domain-materials-text)", dimColor: "var(--domain-materials-dim)", borderColor: "var(--domain-materials-border)" },
+  cyber:      { label: "Cyber / Risk", color: "var(--domain-cyber-text)",     dimColor: "var(--domain-cyber-dim)",     borderColor: "var(--domain-cyber-border)" },
+  custom:     { label: "Custom",       color: "var(--domain-ai-text)",        dimColor: "var(--domain-ai-dim)",        borderColor: "var(--domain-ai-border)" },
 };
 
 function dm(domain: string) { return DOMAIN_META[domain] ?? DOMAIN_META.custom; }

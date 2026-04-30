@@ -114,3 +114,12 @@ export function IconWarning({ size = 16 }: IconProps) {
     </svg>
   );
 }
+
+export function IconShield({ size = 20 }: IconProps) {
+  return (
+    <svg {...base(size)} aria-hidden>
+      <path d="M10 2L3 5.5v5c0 4.2 3 7.5 7 8.5 4-1 7-4.3 7-8.5v-5L10 2z" />
+      <path d="M7.5 10l1.5 1.5 3-3" />
+    </svg>
+  );
+}

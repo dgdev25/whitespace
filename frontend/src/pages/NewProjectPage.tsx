@@ -1,17 +1,18 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useCreateProject } from "../hooks/useProjects";
-import { IconAI, IconBio, IconGlobe, IconTrendingUp, IconAtom, IconSparkle, IconCheck } from "../components/Icons";
+import { IconAI, IconBio, IconGlobe, IconTrendingUp, IconAtom, IconSparkle, IconCheck, IconShield } from "../components/Icons";
 
-type Domain = "ai" | "biomedical" | "climate" | "finance" | "materials" | "custom";
+type Domain = "ai" | "biomedical" | "climate" | "finance" | "materials" | "cyber" | "custom";
 
 const DOMAINS: { key: Domain; icon: React.ReactNode; label: string; desc: string }[] = [
-  { key: "ai",         icon: <IconAI size={22} />,          label: "AI / ML",    desc: "Foundation models, agents, alignment, LLM infrastructure" },
-  { key: "biomedical", icon: <IconBio size={22} />,         label: "Biomedical",  desc: "Genomics, drug discovery, clinical research, multi-omics" },
-  { key: "climate",    icon: <IconGlobe size={22} />,       label: "Climate",     desc: "Carbon capture, energy, climate modelling, adaptation" },
-  { key: "finance",    icon: <IconTrendingUp size={22} />,  label: "Finance",     desc: "Quantitative research, market microstructure, risk models" },
-  { key: "materials",  icon: <IconAtom size={22} />,        label: "Materials",   desc: "Novel materials, synthesis pathways, battery chemistry" },
-  { key: "custom",     icon: <IconSparkle size={22} />,     label: "Custom",      desc: "Define your own domain, sources and prompt context" },
+  { key: "ai",         icon: <IconAI size={22} />,          label: "AI / ML",         desc: "Foundation models, agents, alignment, LLM infrastructure" },
+  { key: "biomedical", icon: <IconBio size={22} />,         label: "Biomedical",       desc: "Genomics, drug discovery, clinical research, multi-omics" },
+  { key: "climate",    icon: <IconGlobe size={22} />,       label: "Climate",          desc: "Carbon capture, energy, climate modelling, adaptation" },
+  { key: "finance",    icon: <IconTrendingUp size={22} />,  label: "Finance",          desc: "Quantitative research, market microstructure, risk models" },
+  { key: "materials",  icon: <IconAtom size={22} />,        label: "Materials",        desc: "Novel materials, synthesis pathways, battery chemistry" },
+  { key: "cyber",      icon: <IconShield size={22} />,      label: "Cyber / Risk",     desc: "Cyber reinsurance, threat intelligence, accumulation risk, vulnerability research" },
+  { key: "custom",     icon: <IconSparkle size={22} />,     label: "Custom",           desc: "Define your own domain, sources and prompt context" },
 ];
 
 type SourceDef = { key: string; label: string; description: string; tags: string[]; default: boolean };
@@ -48,6 +49,14 @@ const DOMAIN_SOURCES: Record<Domain, SourceDef[]> = {
     { key: "open_alex",        label: "OpenAlex",           description: "Broad materials and chemistry academic coverage.",     tags: ["Papers", "Broad"],      default: false },
     { key: "github",           label: "GitHub (Simulation)", description: "Molecular dynamics and materials simulation repos.", tags: ["Code", "Simulation"],  default: false },
   ],
+  cyber: [
+    { key: "arxiv",            label: "arXiv (cs.CR)",      description: "Cybersecurity and cryptography preprints.",            tags: ["Papers", "Security"],   default: true },
+    { key: "cisa_kev",         label: "CISA KEV",           description: "CISA Known Exploited Vulnerabilities — actively weaponised CVEs relevant to accumulation exposure.", tags: ["Threats", "CVE"], default: true },
+    { key: "semantic_scholar", label: "Semantic Scholar",   description: "Academic papers with strong security and risk coverage.", tags: ["Papers", "Citations"], default: true },
+    { key: "ssrn",             label: "SSRN / Risk",        description: "Insurance, reinsurance and cyber risk academic papers via actuarial literature searches.", tags: ["Insurance", "Actuarial"], default: true },
+    { key: "open_alex",        label: "OpenAlex",           description: "Broad academic search including risk management journals.", tags: ["Papers", "Broad"],  default: false },
+    { key: "github",           label: "GitHub",             description: "Security research repos, threat intelligence tools.",   tags: ["Code", "Tools"],       default: false },
+  ],
   custom: [
     { key: "arxiv",            label: "arXiv",              description: "Open-access preprint server for STEM fields.",         tags: ["Papers"],               default: true },
     { key: "semantic_scholar", label: "Semantic Scholar",   description: "Academic papers with citations.",                      tags: ["Papers"],               default: true },
@@ -68,12 +77,14 @@ const DOMAIN_ARXIV_CONFIG: Record<Domain, { categories: string[]; orgs: string[]
   climate:    { categories: ["physics.ao-ph", "eess.SP", "cs.LG", "stat.AP", "math.OC"], orgs: null },
   finance:    { categories: ["q-fin.TR", "q-fin.PM", "q-fin.RM", "q-fin.CP", "cs.LG", "stat.ML"], orgs: null },
   materials:  { categories: ["cond-mat.mtrl-sci", "cond-mat.soft", "physics.chem-ph", "cs.LG"], orgs: null },
+  cyber:      { categories: ["cs.CR", "cs.NI", "cs.SE", "q-fin.RM", "stat.AP", "stat.ML"], orgs: null },
   custom:     { categories: [], orgs: null },
 };
 
 const DOMAIN_COLOR: Record<Domain, string> = {
   ai: "#6366f1", biomedical: "var(--domain-bio)", climate: "var(--domain-climate)",
-  finance: "var(--domain-finance)", materials: "var(--domain-materials)", custom: "var(--accent)",
+  finance: "var(--domain-finance)", materials: "var(--domain-materials)",
+  cyber: "var(--domain-cyber)", custom: "var(--accent)",
 };
 
 const AUTO_INTERVAL_OPTIONS = [
