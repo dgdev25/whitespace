@@ -1,7 +1,10 @@
 import os
+from pathlib import Path
 
-from fastapi import FastAPI, Request, Response
+from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 
 from app.api.routes import build, build_stream, export, ideas, projects, saved, system
 from app.core.lifespan import lifespan
@@ -34,3 +37,26 @@ app.include_router(build.router, prefix="/api")
 app.include_router(build_stream.router, prefix="/api")
 app.include_router(export.router, prefix="/api")
 app.include_router(projects.router, prefix="/api")
+
+# Single-container demo mode: serve the frontend's production build from the
+# same process the API runs in (frontend/src already calls axios with
+# baseURL: "/api" — same-origin by design, no VITE_ build-time env needed).
+# STATIC_DIR is unset in normal dev (frontend runs on its own Vite dev
+# server instead), so this only activates when the build actually placed a
+# `dist` there — e.g. inside the myportfolio showcase Dockerfile.
+_static_dir = Path(os.getenv("STATIC_DIR", "")) if os.getenv("STATIC_DIR") else None
+if _static_dir and _static_dir.is_dir():
+    assets_dir = _static_dir / "assets"
+    if assets_dir.is_dir():
+        app.mount("/assets", StaticFiles(directory=str(assets_dir)), name="static-assets")
+
+    @app.get("/{full_path:path}")
+    async def spa_fallback(full_path: str) -> FileResponse:
+        # Never let a bad /api/* path silently 200 with index.html — that
+        # would hide real API errors as blank frontend pages.
+        if full_path.startswith("api/"):
+            raise HTTPException(status_code=404)
+        candidate = _static_dir / full_path
+        if candidate.is_file():
+            return FileResponse(candidate)
+        return FileResponse(_static_dir / "index.html")

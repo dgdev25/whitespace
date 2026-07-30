@@ -164,7 +164,8 @@ DATABASE_URL=sqlite+aiosqlite:///./whitespace.db
 # ANTHROPIC_API_KEY=sk-ant-...
 # GEMINI_API_KEY=AIza...
 OPENROUTER_API_KEY=sk-or-...
-# OPENROUTER_ANALYSIS_MODEL=anthropic/claude-haiku-4-5   # optional, defaults shown
+# OPENROUTER_ANALYSIS_MODEL=anthropic/claude-opus-4.5    # optional — pins an exact slug
+# Leave unset and Whitespace auto-resolves the newest Claude Opus model OpenRouter offers
 
 # Pipeline mode: "full" uses a real LLM; "stub" inserts fixture data (fast, no API calls)
 PIPELINE_MODE=full

@@ -1,0 +1,86 @@
+schemaVersion: 1
+title: Whitespace
+summary: Finds novel, feasible startup ideas hiding in the gaps between AI research papers, scored and ranked by an LLM pipeline.
+description: >
+  Whitespace monitors AI research papers from arXiv and runs them through an
+  LLM pipeline to surface product ideas that live in the whitespace between
+  what's been published. Every run produces a ranked set of ideas with
+  novelty and feasibility scores, a detailed breakdown, and a product sketch
+  you can generate on demand.
+tags: [ai, research, llm, startup-ideas, fastapi, react]
+visibility: gated
+port: 8000
+healthPath: /api/system/health
+deploy:
+  mode: dockerfile
+  dockerfile: Dockerfile
+# Single-container demo: the FastAPI backend serves the frontend's built
+# static assets itself (see backend/app/main.py's STATIC_DIR mount) rather
+# than running as two separate services. Uses the backend's default SQLite
+# database — no external Postgres/ruvector dependency, so vector-search
+# features that need the ruvector Postgres extension run in a degraded/
+# no-op mode in this demo. The repo's docker-compose.dev-minimal.yml (with
+# Postgres + a worker profile) remains the full local-dev setup; this
+# Dockerfile is only for the myportfolio showcase container.
+env:
+  OPENROUTER_API_KEY: { description: "OpenRouter key for the idea-generation LLM pipeline", required: true, generator: shared }
+resources: small
+lifecycle: { sleepable: true, sleepAfterMinutes: 30 }
+
+category: AI research tool
+overview: >
+  Whitespace watches arXiv for new papers from the labs you configure (Google
+  DeepMind, Anthropic, OpenAI, and others), then runs an LLM pipeline over
+  them to surface startup ideas that sit in the gap between what's been
+  published and what's been built. Each idea comes with novelty and
+  feasibility scores, a detailed breakdown of why it works, and an on-demand
+  product sketch. Built with a FastAPI backend and a React frontend, backed
+  by SQLite for this demo.
+techStack:
+  - { name: FastAPI, label: "backend API + LLM pipeline" }
+  - { name: React, label: "frontend UI" }
+  - { name: TypeScript, label: "frontend types" }
+  - { name: SQLite, label: "demo data store" }
+hero:
+  appName: Whitespace
+  nav: [Feed, Saved, History, Projects, Settings]
+  activeNav: Feed
+  screenTitle: Idea Feed
+  stats:
+    - { label: "Ideas", value: "128" }
+    - { label: "Papers scanned", value: "1.4k" }
+    - { label: "Avg. novelty", value: "7.2" }
+  lists:
+    - title: "Recent ideas"
+      items:
+        - { label: "Agentic PDF-to-dataset pipeline", sub: "2h" }
+        - { label: "Cross-lab citation drift tracker", sub: "6h" }
+  chart: donut
+howItWorks:
+  kicker: "WHITESPACE · IDEA PIPELINE"
+  heading: A daily pipeline turns fresh papers into scored startup ideas.
+  subhead: Papers in, ranked ideas out — with a product sketch on demand.
+  steps:
+    - { label: "01 · FETCH", title: "Pull papers from arXiv", lines: ["Configurable org + category filters", "Runs on a schedule"], tag: "arXiv" }
+    - { label: "02 · ANALYSE", title: "LLM reads each paper", lines: ["Extracts gaps and unbuilt applications"], tag: "LLM" }
+    - { label: "03 · SCORE", title: "Rank by novelty + feasibility", lines: ["Every idea gets both scores"], tag: "Scoring" }
+    - { label: "04 · SKETCH", title: "Generate a product sketch", lines: ["On demand, per idea"], tag: "Build" }
+  guarantees: ["Ideas are grounded in real papers", "Scores are explained, not just numbers"]
+architecture:
+  kicker: "WHITESPACE · ARCHITECTURE"
+  heading: A FastAPI backend serves a React frontend from one container.
+  subhead: SQLite backs this demo; the LLM pipeline runs against arXiv on a schedule.
+  columns:
+    - label: "01 · CLIENT"
+      nodes:
+        - { tag: "UI", title: "React frontend", lines: ["Feed, saved ideas, project builder"] }
+    - label: "02 · API"
+      nodes:
+        - { tag: "API", title: "FastAPI backend", lines: ["Ingestion, scoring, export"] }
+        - { tag: "PIPELINE", title: "LLM analysis pipeline", lines: ["Scheduled arXiv ingestion"] }
+    - label: "03 · DATA"
+      nodes:
+        - { tag: "DB", title: "SQLite", lines: ["Ideas, runs, saved projects"] }
+  legend:
+    - { style: solid, label: "application data" }
+    - { style: dashed, label: "external service (arXiv, LLM provider)" }
