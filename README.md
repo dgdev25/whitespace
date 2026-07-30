@@ -122,6 +122,36 @@ Open **http://localhost:18731** in your browser, then click **Refresh Ideas** to
 
 ---
 
+## Docker
+
+```bash
+./start.sh --docker
+```
+
+Builds and starts Postgres, the FastAPI backend, and the Vite frontend via `docker compose`:
+
+| Service | Container port | Host port |
+|---|---|---|
+| Postgres | 5432 | 18733 |
+| Backend API | 8000 | 18730 |
+| Frontend | 5173 | 18731 |
+
+Config is read from the repo-root `.env` (see [Configuration](#configuration)). Source lives under `backend/` and `frontend/` and is bind-mounted into the containers, so edits hot-reload without a rebuild.
+
+The scheduled worker (daily pipeline run) is opt-in — it's defined behind a compose profile so it doesn't start by default:
+
+```bash
+docker compose -f docker/docker-compose.dev-minimal.yml --profile worker up
+```
+
+To run the compose stack directly instead of via `start.sh`:
+
+```bash
+docker compose -f docker/docker-compose.dev-minimal.yml up --build
+```
+
+---
+
 ## Configuration
 
 Copy `backend/.env.example` to `backend/.env` and edit as needed:
@@ -133,7 +163,8 @@ DATABASE_URL=sqlite+aiosqlite:///./whitespace.db
 # LLM runner — configure at least one (see Runner section below)
 # ANTHROPIC_API_KEY=sk-ant-...
 # GEMINI_API_KEY=AIza...
-# OPENROUTER_API_KEY=sk-or-...
+OPENROUTER_API_KEY=sk-or-...
+# OPENROUTER_ANALYSIS_MODEL=anthropic/claude-haiku-4-5   # optional, defaults shown
 
 # Pipeline mode: "full" uses a real LLM; "stub" inserts fixture data (fast, no API calls)
 PIPELINE_MODE=full
