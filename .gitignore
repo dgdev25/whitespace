@@ -30,3 +30,4 @@ REMAINING_*.md
 SETUP_COMPLETE.md
 # Test output
 coverage/
+logs/

@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# Usage: ./start.sh          — native (venv + npm) dev servers
+#        ./start.sh --docker — docker compose (postgres + backend + frontend)
 set -euo pipefail
 
 # ── colours ───────────────────────────────────────────────────────────────────
@@ -13,6 +15,33 @@ header() { echo -e "\n${BOLD}$*${NC}"; }
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BACKEND="$SCRIPT_DIR/backend"
 FRONTEND="$SCRIPT_DIR/frontend"
+COMPOSE_FILE="$SCRIPT_DIR/docker/docker-compose.dev-minimal.yml"
+
+# ── --docker mode ─────────────────────────────────────────────────────────────
+if [[ "${1:-}" == "--docker" ]]; then
+  RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'
+  BLUE='\033[0;34m'; BOLD='\033[1m'; NC='\033[0m'
+  ok()   { echo -e "${GREEN}✓${NC}  $*"; }
+  info() { echo -e "${BLUE}→${NC}  $*"; }
+  header() { echo -e "\n${BOLD}$*${NC}"; }
+
+  command -v docker &>/dev/null || { echo "docker not found" >&2; exit 1; }
+
+  header "Whitespace v2 — docker startup"
+
+  for port in 18730 18731 18733; do
+    pids=$(lsof -ti tcp:"$port" 2>/dev/null || true)
+    if [[ -n "$pids" ]]; then
+      kill $pids 2>/dev/null || true
+      ok "Stopped existing process on port $port"
+    fi
+  done
+
+  info "Building and starting containers…"
+  docker compose -f "$COMPOSE_FILE" up --build
+
+  exit 0
+fi
 
 # ── cleanup on exit ───────────────────────────────────────────────────────────
 PIDS=()
