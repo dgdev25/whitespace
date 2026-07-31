@@ -23,7 +23,10 @@ deploy:
 # Postgres + a worker profile) remains the full local-dev setup; this
 # Dockerfile is only for the myportfolio showcase container.
 env:
-  OPENROUTER_API_KEY: { description: "OpenRouter key for the idea-generation LLM pipeline", required: true, generator: shared }
+  # myportfolio's LLM relay (its ADR 0024). The platform holds the OpenRouter
+  # key and falls through a chain of free models when one is rate limited, so
+  # this demo needs no key of its own — and cannot leak one.
+  OPENROUTER_BASE_URL: { description: "myportfolio LLM relay endpoint", required: true, generator: shared }
 resources: small
 lifecycle: { sleepable: true, sleepAfterMinutes: 30 }
 

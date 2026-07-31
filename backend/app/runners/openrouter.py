@@ -8,35 +8,28 @@ from app.runners.base import LLMRunner
 
 _RETRIES = 2
 
-_latest_opus_slug: str | None = None
+_DEFAULT_BASE_URL = "https://openrouter.ai/api/v1"
 
 
-def _resolve_latest_opus(api_key: str) -> str:
-    """Resolve the newest Claude Opus model OpenRouter offers, without pinning a version.
+def _base_url() -> str:
+    """Where completions are sent.
 
-    OpenRouter has no floating "latest" alias, so we ask its catalog and pick the
-    most-recently-created `anthropic/*opus*` slug ourselves, then cache it for the
-    process lifetime.
+    Defaults to OpenRouter directly. When this app runs as a myportfolio demo,
+    OPENROUTER_BASE_URL points at the platform's relay instead, which holds the
+    shared API key and falls through a chain of free models when one is rate
+    limited. That keeps the key out of this container entirely — a demo is
+    third-party code from the platform's point of view, and a key it can read
+    is a key it can leak.
     """
-    global _latest_opus_slug
-    if _latest_opus_slug is not None:
-        return _latest_opus_slug
-    resp = requests.get(
-        "https://openrouter.ai/api/v1/models",
-        headers={"Authorization": f"Bearer {api_key}"},
-        timeout=30,
-    )
-    resp.raise_for_status()
-    candidates = [
-        m
-        for m in resp.json().get("data", [])
-        if m.get("id", "").startswith("anthropic/") and "opus" in m.get("id", "")
-    ]
-    if not candidates:
-        raise RuntimeError("No Claude Opus model found on OpenRouter")
-    candidates.sort(key=lambda m: m.get("created", 0), reverse=True)
-    _latest_opus_slug = candidates[0]["id"]
-    return _latest_opus_slug
+    return (os.getenv("OPENROUTER_BASE_URL") or _DEFAULT_BASE_URL).rstrip("/")
+
+
+def _api_key() -> str | None:
+    return os.getenv("OPENROUTER_API_KEY") or None
+
+
+def _using_relay() -> bool:
+    return _base_url() != _DEFAULT_BASE_URL
 
 
 class OpenRouterRunner(LLMRunner):
@@ -46,28 +39,52 @@ class OpenRouterRunner(LLMRunner):
         self._model = model
 
     def is_available(self) -> bool:
-        return bool(os.getenv("OPENROUTER_API_KEY"))
+        # A relay authenticates on our behalf, so no local key is needed. Going
+        # to OpenRouter directly still requires one.
+        return bool(_api_key()) or _using_relay()
 
     def run(self, prompt: str, system: str = "", stream: bool = False) -> str:
-        api_key = os.getenv("OPENROUTER_API_KEY")
-        if not api_key:
-            raise RuntimeError("OPENROUTER_API_KEY missing")
-        model = self._model or os.getenv("OPENROUTER_ANALYSIS_MODEL") or _resolve_latest_opus(api_key)
+        api_key = _api_key()
+        if not api_key and not _using_relay():
+            raise RuntimeError("OPENROUTER_API_KEY missing (or set OPENROUTER_BASE_URL to a relay)")
+
+        # No implicit model. This used to fall back to "the newest Claude Opus
+        # OpenRouter offers" whenever no model was configured, which meant an
+        # unset env var silently billed the account owner for a frontier model
+        # on every request — including every visitor to a public demo. When a
+        # relay is in use, omitting the model lets IT choose (its chain is
+        # free-only); going direct, an unset model is a configuration error and
+        # should say so rather than pick something expensive.
+        model = self._model or os.getenv("OPENROUTER_ANALYSIS_MODEL") or os.getenv("OPENROUTER_MODEL")
+        if not model and not _using_relay():
+            raise RuntimeError(
+                "No model configured: set OPENROUTER_ANALYSIS_MODEL (or OPENROUTER_MODEL), "
+                "e.g. google/gemma-4-31b-it:free"
+            )
+
         messages = []
         if system:
             messages.append({"role": "system", "content": system})
         messages.append({"role": "user", "content": prompt})
+
+        payload: dict = {"messages": messages}
+        if model:
+            payload["model"] = model
+
+        headers = {}
+        if api_key:
+            headers["Authorization"] = f"Bearer {api_key}"
+
         for attempt in range(_RETRIES + 1):
             resp = requests.post(
-                "https://openrouter.ai/api/v1/chat/completions",
-                headers={"Authorization": f"Bearer {api_key}"},
-                json={
-                    "model": model,
-                    "messages": messages,
-                },
+                f"{_base_url()}/chat/completions",
+                headers=headers,
+                json=payload,
                 timeout=60,
             )
-            if resp.status_code == 429 and attempt < _RETRIES:
+            # A relay has already walked its own fallback chain before
+            # answering 429, so retrying it just delays the same result.
+            if resp.status_code == 429 and attempt < _RETRIES and not _using_relay():
                 time.sleep(2 ** attempt + random.random())
                 continue
             resp.raise_for_status()
