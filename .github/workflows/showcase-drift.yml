@@ -1,0 +1,63 @@
+# Copy BOTH of these into the demo repo:
+#   this file        -> .github/workflows/showcase-drift.yml
+#   showcase-drift.sh -> .github/scripts/showcase-drift.sh   (chmod +x)
+#
+# Keeps the public project page honest. `.showcase/showcase.yaml` carries the
+# copy myportfolio renders — overview, tech stack, how-it-works, architecture —
+# and nothing breaks when it goes stale, which is why it does. This nags on the
+# pull request instead of letting the site quietly describe a version of the
+# project that no longer exists.
+#
+# The script is VENDORED, not downloaded. An earlier draft curled it from the
+# myportfolio repo, which is private — every run would have 404'd on an
+# unauthenticated runner. A check that fails for its own reasons is worse than
+# no check: people learn to ignore the red mark, and it stops meaning anything.
+# Vendoring also means this works on a fork, offline, and after myportfolio
+# moves or is renamed.
+#
+# Deliberately a WARNING, not a blocked merge: a stale diagram is a
+# documentation problem, and failing someone's build over it teaches them to
+# route around the check. Drop `continue-on-error` to make it a hard gate.
+name: showcase drift
+
+on:
+  pull_request:
+    paths-ignore: ['**.md', 'docs/**']
+  # Also on push, because plenty of repos commit straight to the default
+  # branch and would otherwise never see this.
+  push:
+    branches: [main, master]
+    paths-ignore: ['**.md', 'docs/**']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  drift:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # The check compares commit history, so a shallow clone would report
+          # nonsense — it needs to see back to when the manifest last changed.
+          fetch-depth: 0
+
+      - name: Is the project page still current?
+        id: drift
+        continue-on-error: true
+        run: bash .github/scripts/showcase-drift.sh --max-commits 25 --max-days 90 .
+
+      - name: Say so on the summary
+        if: steps.drift.outcome == 'failure'
+        run: |
+          {
+            echo "### ⚠ Project page may be out of date"
+            echo
+            echo "\`.showcase/showcase.yaml\` hasn't kept up with the code, so the"
+            echo "public page on myportfolio may describe a version of this project"
+            echo "that no longer exists."
+            echo
+            echo "Re-run \`/myportfolio-dockerfile\` in this repo, review the diff,"
+            echo "and commit the updated manifest."
+          } >> "$GITHUB_STEP_SUMMARY"
