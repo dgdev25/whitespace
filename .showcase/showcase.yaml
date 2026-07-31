@@ -8,7 +8,7 @@ description: >
   novelty and feasibility scores, a detailed breakdown, and a product sketch
   you can generate on demand.
 tags: [ai, research, llm, startup-ideas, fastapi, react]
-visibility: gated
+visibility: public-card
 port: 8000
 healthPath: /api/system/health
 deploy:
