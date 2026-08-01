@@ -5,6 +5,7 @@ from fastapi import FastAPI
 from sqlalchemy import update
 
 from app.core.config import settings
+from app.core.showcase_seed import seed_showcase_data
 from app.db.models.project import ProjectRun
 from app.db.models.user_settings import UserSettings
 from app.db.session import AsyncSessionLocal, engine
@@ -27,6 +28,9 @@ async def lifespan(app: FastAPI):
             session.add(existing)
             await session.commit()
         set_model_prefs(existing.runner_model_prefs or {})
+
+        if settings.showcase_demo_mode:
+            await seed_showcase_data(session)
 
         # Mark any runs that were stuck in "running" at shutdown as errors
         await session.execute(

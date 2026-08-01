@@ -38,14 +38,19 @@ LLM relay rather than a project-owned provider key.
   product-sketch generation, project PRD generation, and project pipeline runs
   now reject with `403` before an external request can occur. The guard has an
   API test and was proven in a fresh image alongside a `200` health response.
+- 2026-08-01 showcase-data gate: an empty demo database is seeded idempotently
+  at startup with two synthetic source records and three explicitly labelled
+  `Synthetic showcase` ideas, including one saved idea and a prebuilt static
+  sketch. A fresh image returned those records through the normal feed API;
+  no external research or model request was made.
 
 ## Status
 
-**Not yet eligible for refresh or a new VPS deployment.** A previously
-deployed revision may remain available, but a fresh image would start with an
-empty SQLite database. The showcase guard now prevents external ingestion and
-model spend; deterministic synthetic demonstration state and browser/hosted
-acceptance remain required before refresh.
+**Ready for a guarded refresh, pending browser and hosted acceptance.** A fresh
+image now supplies deterministic synthetic data and prevents external
+ingestion/model spend. Do not call it a completed deployment until the updated
+gated VPS revision renders correctly and its health, invite, and public
+boundaries are rechecked.
 
 ## Project-page record
 
@@ -62,8 +67,8 @@ acceptance remain required before refresh.
 
 ## Remediation before reconsideration
 
-1. Seed deterministic, clearly labelled synthetic research/idea/project data
-   into a fresh showcase database, and verify that the image holds no provider
-   key while the demo guard rejects all live-operation requests.
+1. Refresh the gated VPS instance from the reviewed commit and verify that the
+   runtime image holds no provider key while the demo guard rejects all
+   live-operation requests.
 2. Run browser QA plus the gated invite and hosted health checks on that clean
    revision before any refresh.
