@@ -1,20 +1,19 @@
 schemaVersion: 1
 title: Whitespace
-summary: Finds novel, feasible startup ideas hiding in the gaps between AI research papers, scored and ranked by an LLM pipeline.
+summary: A read-only, invite-gated technical showcase of reviewable AI-product hypotheses built from permanently synthetic evidence.
 description: >
-  Whitespace monitors AI research papers from arXiv and runs them through an
-  LLM pipeline to surface product ideas that live in the whitespace between
-  what's been published. Every run produces a ranked set of ideas with
-  novelty and feasibility scores, a detailed breakdown, and a product sketch
-  you can generate on demand.
-tags: [ai, research, llm, startup-ideas, fastapi, react]
+  Whitespace demonstrates an evidence-to-product-review workflow using two
+  permanently synthetic source records and three prebuilt ideas. The hosted
+  environment is deliberately read only: live ingestion, model analysis, and
+  generation routes are disabled before any external request can occur.
+tags: [ai, synthetic-data, review-workflow, fastapi, react]
 technicalMaps:
   workflow:
-    url: https://raw.githubusercontent.com/dgdev25/whitespace/main/docs/project-page/whitespace-workflow-map.png
-    alt: "Technical workflow map: scheduled arXiv ingestion, paper normalization, bounded LLM analysis, scoring, product-sketch generation, and reviewable saved ideas."
+    url: https://lyledg.com/product-maps/whitespace-workflow-map.png
+    alt: "Technical workflow map: idempotent synthetic seed, evidence review, static plan output, deterministic export, and blocked live pipeline requests."
   architecture:
-    url: https://raw.githubusercontent.com/dgdev25/whitespace/main/docs/project-page/whitespace-architecture-map.png
-    alt: "Technical architecture map: React client, FastAPI application boundary, SQLite demo data, shared LLM relay, arXiv, and operational safety controls."
+    url: https://lyledg.com/product-maps/whitespace-architecture-map.png
+    alt: "Technical architecture map: invite-gated React UI, FastAPI, SQLite synthetic records, and disabled ingestion and model-generation boundaries."
 visibility: public-card
 port: 8000
 healthPath: /api/system/health
@@ -29,68 +28,61 @@ deploy:
 # no-op mode in this demo. The repo's docker-compose.dev-minimal.yml (with
 # Postgres + a worker profile) remains the full local-dev setup; this
 # Dockerfile is only for the myportfolio showcase container.
-env:
-  # myportfolio's LLM relay (its ADR 0024). The platform holds the OpenRouter
-  # key and falls through a chain of free models when one is rate limited, so
-  # this demo needs no key of its own — and cannot leak one.
-  OPENROUTER_BASE_URL: { description: "myportfolio LLM relay endpoint", required: true, generator: shared }
 resources: small
 lifecycle: { sleepable: true, sleepAfterMinutes: 30 }
 
 category: AI research tool
 overview: >
-  Whitespace watches arXiv for new papers from the labs you configure (Google
-  DeepMind, Anthropic, OpenAI, and others), then runs an LLM pipeline over
-  them to surface startup ideas that sit in the gap between what's been
-  published and what's been built. Each idea comes with novelty and
-  feasibility scores, a detailed breakdown of why it works, and an on-demand
-  product sketch. Built with a FastAPI backend and a React frontend, backed
-  by SQLite for this demo.
+  The hosted Whitespace showcase presents a deterministic evidence-review
+  workflow. It starts with two labelled synthetic source records and three
+  scored ideas, then lets an invited reviewer inspect a complete static product
+  sketch, PRD, and technical plan. The browser never receives a provider key,
+  and the server rejects live ingestion, model analysis, and plan generation.
 techStack:
-  - { name: FastAPI, label: "backend API + LLM pipeline" }
+  - { name: FastAPI, label: "read-only API and showcase boundary" }
   - { name: React, label: "frontend UI" }
   - { name: TypeScript, label: "frontend types" }
-  - { name: SQLite, label: "demo data store" }
+  - { name: SQLite, label: "synthetic demo data store" }
 hero:
   appName: Whitespace
   nav: [Feed, Saved, History, Projects, Settings]
   activeNav: Feed
-  screenTitle: Idea Feed
+  screenTitle: Synthetic Idea Feed
   stats:
-    - { label: "Ideas", value: "128" }
-    - { label: "Papers scanned", value: "1.4k" }
-    - { label: "Avg. novelty", value: "7.2" }
+    - { label: "Ideas", value: "3" }
+    - { label: "Synthetic sources", value: "2" }
+    - { label: "Live pipelines", value: "0" }
   lists:
     - title: "Recent ideas"
       items:
-        - { label: "Agentic PDF-to-dataset pipeline", sub: "2h" }
-        - { label: "Cross-lab citation drift tracker", sub: "6h" }
+        - { label: "Evidence Ledger for AI decisions", sub: "synthetic" }
+        - { label: "Policy Diff for changing controls", sub: "synthetic" }
   chart: donut
 howItWorks:
   kicker: "WHITESPACE · IDEA PIPELINE"
-  heading: A daily pipeline turns fresh papers into scored startup ideas.
-  subhead: Papers in, ranked ideas out — with a product sketch on demand.
+  heading: A fixed synthetic dataset demonstrates reviewable product hypotheses.
+  subhead: Static evidence in, inspectable plans out — without an external source or model call.
   steps:
-    - { label: "01 · FETCH", title: "Pull papers from arXiv", lines: ["Configurable org + category filters", "Runs on a schedule"], tag: "arXiv" }
-    - { label: "02 · ANALYSE", title: "LLM reads each paper", lines: ["Extracts gaps and unbuilt applications"], tag: "LLM" }
-    - { label: "03 · SCORE", title: "Rank by novelty + feasibility", lines: ["Every idea gets both scores"], tag: "Scoring" }
-    - { label: "04 · SKETCH", title: "Generate a product sketch", lines: ["On demand, per idea"], tag: "Build" }
-  guarantees: ["Ideas are grounded in real papers", "Scores are explained, not just numbers"]
+    - { label: "01 · SEED", title: "Load synthetic records", lines: ["Two source records and three ideas", "Idempotent startup repair"], tag: "SQLite" }
+    - { label: "02 · REVIEW", title: "Inspect evidence and scores", lines: ["Synthetic source references", "Novelty and feasibility context"], tag: "Read-only" }
+    - { label: "03 · PLAN", title: "Open static product output", lines: ["Prebuilt sketch, PRD, and technical plan"], tag: "Static" }
+    - { label: "04 · ENFORCE", title: "Block live operations", lines: ["Ingestion and model routes return 403"], tag: "Guard" }
+  guarantees: ["Every hosted record is explicitly synthetic", "No live ingestion, model call, or browser credential"]
 architecture:
   kicker: "WHITESPACE · ARCHITECTURE"
-  heading: A FastAPI backend serves a React frontend from one container.
-  subhead: SQLite backs this demo; the LLM pipeline runs against arXiv on a schedule.
+  heading: A FastAPI backend serves a React frontend from one read-only container.
+  subhead: SQLite holds only fixed synthetic records; live research and model boundaries are disabled.
   columns:
     - label: "01 · CLIENT"
       nodes:
-        - { tag: "UI", title: "React frontend", lines: ["Feed, saved ideas, project builder"] }
+        - { tag: "UI", title: "React frontend", lines: ["Feed, evidence review, static plans"] }
     - label: "02 · API"
       nodes:
-        - { tag: "API", title: "FastAPI backend", lines: ["Ingestion, scoring, export"] }
-        - { tag: "PIPELINE", title: "LLM analysis pipeline", lines: ["Scheduled arXiv ingestion"] }
+        - { tag: "API", title: "FastAPI backend", lines: ["Read endpoints, static export, health"] }
+        - { tag: "GUARD", title: "Showcase safety boundary", lines: ["Live ingestion and model actions return 403"] }
     - label: "03 · DATA"
       nodes:
-        - { tag: "DB", title: "SQLite", lines: ["Ideas, runs, saved projects"] }
+        - { tag: "DB", title: "SQLite", lines: ["Synthetic sources, ideas, static plans"] }
   legend:
     - { style: solid, label: "application data" }
-    - { style: dashed, label: "external service (arXiv, LLM provider)" }
+    - { style: dashed, label: "disabled live-operation boundary" }
