@@ -1,9 +1,9 @@
 # Repository deployment manifest — Whitespace
 
 **Audited:** 2026-08-01  
-**Deployment decision:** Hold refresh/redeployment pending container and hosted
-acceptance; retain the existing VPS instance only while its public and health
-boundaries remain verified.
+**Deployment decision:** Publicly available as an invite-gated, read-only
+synthetic showcase on Leaseweb. Retain the instance only while its health,
+invite, and live-operation boundaries remain verified.
 
 ## What it is
 
@@ -43,21 +43,26 @@ LLM relay rather than a project-owned provider key.
   `Synthetic showcase` ideas, including one saved idea and a prebuilt static
   sketch. A fresh image returned those records through the normal feed API;
   no external research or model request was made.
+- 2026-08-01 hosted browser correction: every seeded build output now has the
+  complete static product-sketch contract that the React plan screen renders.
+  Startup also repairs only Whitespace's three reserved synthetic records from
+  the earlier minimal placeholder. A focused seed test prevents a partial
+  sketch from being published again.
 
 ## Status
 
-**Ready for a guarded refresh, pending browser and hosted acceptance.** A fresh
-image now supplies deterministic synthetic data and prevents external
-ingestion/model spend. Do not call it a completed deployment until the updated
-gated VPS revision renders correctly and its health, invite, and public
-boundaries are rechecked.
+**Published as a guarded synthetic showcase.** The source, container, and
+hosted acceptance gates now pass. It is an invite-gated review environment,
+not a live research or model-analysis service.
 
-**Refresh evidence (2026-08-01):** Leaseweb is running image commit
-`6df6e9d`. Its internal health is `200` with SQLite `ok`; the normal feed
-returns the two synthetic source records and three `Synthetic showcase` ideas;
-and a pipeline request returns `403`. The public health route remains invite
-gated (`401` with `noindex`). Browser and a fresh invite-redemption acceptance
-remain the final refresh gates.
+**Hosted evidence (2026-08-01):** Leaseweb is running image commit
+`46f3490`. Both live containers report internal health `ok`, SQLite `ok`, and
+`showcase_demo_mode: true`. A fresh invitation redeemed successfully; its
+authenticated feed returned the three `Synthetic showcase` ideas, while the
+pipeline endpoint returned `403`. The public health route remains invite gated
+(`401` with `noindex`). A separate fresh browser invitation rendered the
+static build-plan overview with no horizontal overflow or browser errors; both
+disposable test invitations were immediately revoked.
 
 ## Project-page record
 
@@ -69,13 +74,13 @@ remain the final refresh gates.
   committed raster maps. The shared portfolio detail template renders them
   full width with the global active palette; no standalone visitor page or SVG
   is introduced.
-- The maps distinguish the currently listed demo from a source refresh: the
-  refresh remains blocked by the recorded quality gates.
+- The maps distinguish the public synthetic showcase from the separate live
+  research product, which remains intentionally disabled on this host.
 
 ## Remediation before reconsideration
 
-1. Refresh the gated VPS instance from the reviewed commit and verify that the
-   runtime image holds no provider key while the demo guard rejects all
-   live-operation requests.
-2. Run browser QA plus the gated invite and hosted health checks on that clean
-   revision before any refresh.
+1. Before any future live deployment, provision a separate data, retention,
+   budget, provider-key, and deletion-control review. Do not remove the
+   showcase guard as a shortcut.
+2. Repeat the hosted invite, read-only action, health, and browser checks for
+   every production refresh.
