@@ -4,7 +4,7 @@ import logging
 import threading
 from datetime import datetime, timedelta, timezone
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 from sse_starlette.sse import EventSourceResponse
@@ -67,6 +67,14 @@ _schedule_timer: threading.Timer | None = None
 
 def _parse_setting(value: str) -> list[str]:
     return [v.strip() for v in value.split(",") if v.strip()]
+
+
+def _require_live_pipeline() -> None:
+    if settings.showcase_demo_mode:
+        raise HTTPException(
+            status_code=403,
+            detail="Live ingestion and model analysis are disabled in the public showcase.",
+        )
 
 
 def _run_pipeline_sync():
@@ -202,6 +210,7 @@ async def pipeline_status(session: AsyncSession = Depends(get_session)):
 
 @router.post("/pipeline/run", response_model=PipelineRunOut)
 async def run_pipeline():
+    _require_live_pipeline()
     if not _pipeline_lock.acquire(blocking=False):
         return PipelineRunOut(status="already_running", message="Pipeline is already running.")
 
@@ -269,6 +278,8 @@ async def get_schedule():
 
 @router.put("/schedule", response_model=ScheduleStatusOut)
 async def set_schedule(body: ScheduleConfigIn):
+    if body.enabled:
+        _require_live_pipeline()
     global _schedule_enabled, _schedule_interval_minutes, _schedule_next_run, _schedule_timer
 
     # Cancel any existing timer
@@ -374,6 +385,7 @@ def _import_handle_sync(handle: str) -> None:
 
 @router.post("/github-repos/import-org", response_model=OrgImportStatusOut)
 async def import_org_repos(body: OrgImportIn):
+    _require_live_pipeline()
     global _org_import_state
     handle = body.handle.strip().lstrip("@").rstrip("/")
     if not handle:

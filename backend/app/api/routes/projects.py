@@ -11,6 +11,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_session
+from app.core.config import settings
 from app.db.models.project import Project, ProjectIdea, ProjectRun
 from app.schemas.project import (
     ProjectCreate,
@@ -323,6 +324,8 @@ async def generate_project_idea_prd(
     idea_id: str,
     session: AsyncSession = Depends(get_session),
 ) -> PrdResponse:
+    if settings.showcase_demo_mode:
+        raise HTTPException(status_code=403, detail="Model-backed PRD generation is disabled in the public showcase")
     project = await session.get(Project, project_id)
     if project is None:
         raise HTTPException(status_code=404, detail="Project not found")
@@ -356,6 +359,8 @@ async def list_project_runs(
 
 @router.post("/{project_id}/run", response_model=ProjectRunStatusOut)
 async def trigger_project_run(project_id: int, session: AsyncSession = Depends(get_session)) -> ProjectRunStatusOut:
+    if settings.showcase_demo_mode:
+        raise HTTPException(status_code=403, detail="Live research ingestion is disabled in the public showcase")
     project = await session.get(Project, project_id)
     if project is None:
         raise HTTPException(status_code=404, detail="Project not found")

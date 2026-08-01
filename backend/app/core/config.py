@@ -20,6 +20,9 @@ class Settings(BaseSettings):
     ideas_per_run: int = 5
     max_sources_per_run: int = 5
     cached_analyses_count: int = 5
+    # Public showcase deployments are read-only: never let a visitor trigger
+    # external research ingestion or model-backed generation from the browser.
+    showcase_demo_mode: bool = False
 
 
 settings = Settings()

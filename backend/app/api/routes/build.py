@@ -3,6 +3,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_session
+from app.core.config import settings
 from app.db.models.build_output import BuildOutput
 from app.db.models.idea import Idea
 from app.schemas.build import BuildOutputOut
@@ -28,6 +29,8 @@ async def get_build(idea_id: str, session: AsyncSession = Depends(get_session)):
 
 @router.post("/{idea_id}", response_model=BuildOutputOut, status_code=202)
 async def trigger_build(idea_id: str, background_tasks: BackgroundTasks, session: AsyncSession = Depends(get_session)):
+    if settings.showcase_demo_mode:
+        raise HTTPException(403, "Model-backed build generation is disabled in the public showcase")
     idea = (await session.execute(select(Idea).where(Idea.id == idea_id))).scalars().first()
     if not idea:
         raise HTTPException(404, "Idea not found")

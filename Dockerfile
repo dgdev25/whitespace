@@ -40,6 +40,9 @@ COPY --from=frontend-builder /build/frontend/dist ./static
 
 ENV PATH="/app/backend/.venv/bin:$PATH"
 ENV STATIC_DIR=/app/backend/static
+# The showcase image is deliberately read-only: browser requests must not
+# start live ingestion or model-backed generation against external services.
+ENV SHOWCASE_DEMO_MODE=true
 
 RUN useradd -m appuser && chown -R appuser:appuser /app/backend /opt/uv-python
 USER appuser
