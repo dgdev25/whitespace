@@ -52,6 +52,13 @@ ingestion/model spend. Do not call it a completed deployment until the updated
 gated VPS revision renders correctly and its health, invite, and public
 boundaries are rechecked.
 
+**Refresh evidence (2026-08-01):** Leaseweb is running image commit
+`6df6e9d`. Its internal health is `200` with SQLite `ok`; the normal feed
+returns the two synthetic source records and three `Synthetic showcase` ideas;
+and a pipeline request returns `403`. The public health route remains invite
+gated (`401` with `noindex`). Browser and a fresh invite-redemption acceptance
+remain the final refresh gates.
+
 ## Project-page record
 
 **Updated:** 2026-08-01
