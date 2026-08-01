@@ -33,13 +33,19 @@ LLM relay rather than a project-owned provider key.
 - 2026-08-01 container gate: the production Docker image builds using the same
   type-checked frontend command as CI and returns a successful
   `/api/system/health` response with a new SQLite database.
+- 2026-08-01 showcase safety gate: the production image sets
+  `SHOWCASE_DEMO_MODE=true`. Live ingestion, organisation import, model-backed
+  product-sketch generation, project PRD generation, and project pipeline runs
+  now reject with `403` before an external request can occur. The guard has an
+  API test and was proven in a fresh image alongside a `200` health response.
 
 ## Status
 
 **Not yet eligible for refresh or a new VPS deployment.** A previously
-deployed revision may remain available, but container and hosted acceptance do
-not yet prove a safe reproducible replacement. The research/LLM workload also
-needs a bounded provider relay and synthetic-only demonstration state.
+deployed revision may remain available, but a fresh image would start with an
+empty SQLite database. The showcase guard now prevents external ingestion and
+model spend; deterministic synthetic demonstration state and browser/hosted
+acceptance remain required before refresh.
 
 ## Project-page record
 
@@ -56,7 +62,8 @@ needs a bounded provider relay and synthetic-only demonstration state.
 
 ## Remediation before reconsideration
 
-1. Verify the deployed demo uses only synthetic research/idea state, preserves
-   no provider key in the container, and enforces a shared-relay spend cap.
-2. Run browser QA plus the gated invite and hosted health checks on a clean
+1. Seed deterministic, clearly labelled synthetic research/idea/project data
+   into a fresh showcase database, and verify that the image holds no provider
+   key while the demo guard rejects all live-operation requests.
+2. Run browser QA plus the gated invite and hosted health checks on that clean
    revision before any refresh.
