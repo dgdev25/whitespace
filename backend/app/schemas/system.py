@@ -22,6 +22,7 @@ class RunnersOut(BaseModel):
 
 
 class SystemConfigOut(BaseModel):
+    showcase_demo_mode: bool
     schedule_hour: int
     schedule_minute: int
     ideas_per_run: int

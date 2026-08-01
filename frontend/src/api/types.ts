@@ -91,6 +91,7 @@ export interface RunnersResponse {
 }
 
 export interface SystemConfig {
+  showcase_demo_mode: boolean;
   schedule_hour: number;
   schedule_minute: number;
   ideas_per_run: number;

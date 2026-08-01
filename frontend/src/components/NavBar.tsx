@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { useThemeStore } from "../store/themeStore";
-import { useTriggerPipeline, usePipelineStatus } from "../hooks/useIdeas";
+import { useSystemConfig, useTriggerPipeline, usePipelineStatus } from "../hooks/useIdeas";
 import { usePipelineStream } from "../hooks/usePipelineStream";
 import { PipelineProgress } from "./PipelineProgress";
 
@@ -11,6 +11,7 @@ export function NavBar() {
   const location = useLocation();
   const qc = useQueryClient();
   const triggerPipeline = useTriggerPipeline();
+  const { data: config } = useSystemConfig();
   const { data: pipelineStatus } = usePipelineStatus();
   const [showProgress, setShowProgress] = useState(false);
 
@@ -52,7 +53,7 @@ export function NavBar() {
   ];
 
   const handleRefresh = () => {
-    if (isRunning || triggerPipeline.isPending) return;
+    if (config?.showcase_demo_mode || isRunning || triggerPipeline.isPending) return;
     setShowProgress(true);
     triggerPipeline.mutate(undefined);
   };
@@ -119,7 +120,7 @@ export function NavBar() {
         <div style={{ position: "relative" }}>
           <button
             onClick={handleRefresh}
-            disabled={isRunning || triggerPipeline.isPending}
+            disabled={config?.showcase_demo_mode || isRunning || triggerPipeline.isPending}
             style={{
               background: "var(--accent)",
               border: "none",
@@ -131,8 +132,8 @@ export function NavBar() {
               display: "flex",
               alignItems: "center",
               gap: 8,
-              opacity: (isRunning || triggerPipeline.isPending) ? 0.7 : 1,
-              cursor: (isRunning || triggerPipeline.isPending) ? "not-allowed" : "pointer",
+              opacity: (config?.showcase_demo_mode || isRunning || triggerPipeline.isPending) ? 0.7 : 1,
+              cursor: (config?.showcase_demo_mode || isRunning || triggerPipeline.isPending) ? "not-allowed" : "pointer",
             }}
           >
             {(isRunning || triggerPipeline.isPending) ? (
@@ -147,7 +148,7 @@ export function NavBar() {
                 }} />
                 Running…
               </>
-            ) : "↻ Refresh Ideas"}
+            ) : config?.showcase_demo_mode ? "Synthetic showcase" : "↻ Refresh Ideas"}
           </button>
 
           {(showProgress || isRunning || triggerPipeline.isPending) && <PipelineProgress steps={steps} />}

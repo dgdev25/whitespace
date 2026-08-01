@@ -431,6 +431,7 @@ async def _get_user_settings(session: AsyncSession) -> UserSettings:
 async def _build_config_out(session: AsyncSession, all_orgs: list[str], all_cats: list[str]) -> SystemConfigOut:
     user_cfg = await _get_user_settings(session)
     return SystemConfigOut(
+        showcase_demo_mode=settings.showcase_demo_mode,
         schedule_hour=settings.worker_schedule_hour,
         schedule_minute=settings.worker_schedule_minute,
         ideas_per_run=user_cfg.ideas_per_run,

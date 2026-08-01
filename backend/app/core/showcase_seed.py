@@ -107,15 +107,16 @@ async def seed_showcase_data(session: AsyncSession) -> None:
     ]
     session.add_all(ideas)
     session.add(SavedIdea(idea_id=ideas[0].id))
-    session.add(
-        BuildOutput(
-            idea_id=ideas[0].id,
-            status="ready",
-            product_sketch={"kind": "synthetic-showcase", "note": "No model request was made."},
-            technical_plan=(
-                "Synthetic demonstration plan: evidence capture, reviewer queue, and immutable decision trail."
-            ),
-            prd="# Synthetic showcase PRD\n\nThis static example exists solely for product review.",
+    for idea in ideas:
+        session.add(
+            BuildOutput(
+                idea_id=idea.id,
+                status="ready",
+                product_sketch={"kind": "synthetic-showcase", "note": "No model request was made."},
+                technical_plan=(
+                    "Synthetic demonstration plan: evidence capture, reviewer queue, and immutable decision trail."
+                ),
+                prd="# Synthetic showcase PRD\n\nThis static example exists solely for product review.",
+            )
         )
-    )
     await session.commit()
