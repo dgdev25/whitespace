@@ -22,8 +22,7 @@ def score_ideas(
     filtered = [
         idea
         for idea in ideas
-        if idea.raw_novelty_score >= novelty_threshold
-        and idea.raw_feasibility_score >= feasibility_threshold
+        if idea.raw_novelty_score >= novelty_threshold and idea.raw_feasibility_score >= feasibility_threshold
     ]
 
     sorted_ideas = sorted(

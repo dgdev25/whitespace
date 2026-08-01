@@ -1,4 +1,5 @@
 """add projects, project_runs, project_ideas tables"""
+
 import sqlalchemy as sa
 from alembic import op
 

@@ -1,4 +1,5 @@
 """add why_novel, who_builds, who_buys to project_ideas"""
+
 import sqlalchemy as sa
 from alembic import op
 

@@ -29,14 +29,10 @@ def run_gap_map(
         GapMapOutput with identified gaps, contradictions, and themes
     """
     # Fetch all analyses for the session
-    analyses = session.query(PaperAnalysis).filter(
-        PaperAnalysis.session_id == session_id
-    ).all()
+    analyses = session.query(PaperAnalysis).filter(PaperAnalysis.session_id == session_id).all()
 
     # Build prompt with all analyses
-    prompt_parts = [
-        "Analyze the following research paper analyses for gaps, contradictions, and themes:\n"
-    ]
+    prompt_parts = ["Analyze the following research paper analyses for gaps, contradictions, and themes:\n"]
 
     for i, analysis in enumerate(analyses, 1):
         prompt_parts.append(f"\n--- Paper {i} ---")

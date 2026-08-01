@@ -4,6 +4,7 @@ The background pipeline thread calls emit(); the async SSE endpoint
 reads via get_events(). No queues needed — readers just poll the list
 by index.
 """
+
 import threading
 from datetime import datetime, timezone
 
@@ -27,12 +28,14 @@ def end_run() -> None:
 
 def emit(step: str, message: str, status: str = "running") -> None:
     with _lock:
-        _events.append({
-            "step": step,
-            "message": message,
-            "status": status,
-            "ts": datetime.now(timezone.utc).isoformat(),
-        })
+        _events.append(
+            {
+                "step": step,
+                "message": message,
+                "status": status,
+                "ts": datetime.now(timezone.utc).isoformat(),
+            }
+        )
 
 
 def get_snapshot(from_idx: int = 0) -> tuple[list[dict], bool]:

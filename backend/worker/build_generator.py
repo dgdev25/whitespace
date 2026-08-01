@@ -1,7 +1,9 @@
 import logging
 from pathlib import Path
+
 from sqlalchemy.orm import Session
 from sqlalchemy.orm.attributes import flag_modified
+
 from app.db.models.build_output import BuildOutput
 from app.db.models.idea import Idea
 from app.db.models.paper import Paper
@@ -28,13 +30,14 @@ def _strip_preamble(text: str) -> str:
 
 
 def _fill(template: str, idea: Idea, paper_refs: str = "") -> str:
-    return (template
-        .replace("{{title}}", _sanitize(idea.title))
+    return (
+        template.replace("{{title}}", _sanitize(idea.title))
         .replace("{{description}}", _sanitize(idea.description))
         .replace("{{why_novel}}", _sanitize(idea.why_novel))
         .replace("{{who_builds}}", _sanitize(idea.who_builds))
         .replace("{{who_buys}}", _sanitize(idea.who_buys))
-        .replace("{{paper_ids}}", paper_refs or ", ".join(_sanitize(p) for p in idea.paper_ids)))
+        .replace("{{paper_ids}}", paper_refs or ", ".join(_sanitize(p) for p in idea.paper_ids))
+    )
 
 
 def generate_product_sketch(idea: Idea, runner) -> dict:

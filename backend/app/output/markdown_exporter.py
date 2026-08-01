@@ -101,8 +101,7 @@ def export_markdown(payload: dict) -> str:
             if idea.get("description"):
                 lines.append(idea["description"])
             lines.append(
-                f"- **Scores**: Novelty {idea.get('novelty_score')}, "
-                f"Feasibility {idea.get('feasibility_score')}"
+                f"- **Scores**: Novelty {idea.get('novelty_score')}, Feasibility {idea.get('feasibility_score')}"
             )
             if idea.get("supporting_gaps"):
                 lines.append("- **Supporting Gaps:**")
@@ -124,8 +123,7 @@ def export_markdown(payload: dict) -> str:
         lines.append("## Appendix: Paper Metadata")
         for paper in papers:
             lines.append(
-                f"- {paper.get('title') or 'Untitled'} "
-                f"({paper.get('source_type')}): {paper.get('source_url') or 'n/a'}"
+                f"- {paper.get('title') or 'Untitled'} ({paper.get('source_type')}): {paper.get('source_url') or 'n/a'}"
             )
 
     lines.append("")

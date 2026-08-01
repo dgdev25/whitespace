@@ -29,12 +29,9 @@ def _build_markdown(idea: Idea, build: BuildOutput) -> str:
     risks = sketch.get("risks", [])
     monetisation = sketch.get("monetisation", [])
 
-    risks_md = "\n".join(
-        f"- **{r.get('title', '')}**: {r.get('description', '')}" for r in risks
-    )
+    risks_md = "\n".join(f"- **{r.get('title', '')}**: {r.get('description', '')}" for r in risks)
     monetisation_md = "\n".join(
-        f"- **{m.get('name', '')}** ({m.get('fit', '')}): {m.get('description', '')}"
-        for m in monetisation
+        f"- **{m.get('name', '')}** ({m.get('fit', '')}): {m.get('description', '')}" for m in monetisation
     )
 
     e = _escape_md
@@ -56,12 +53,12 @@ def _build_markdown(idea: Idea, build: BuildOutput) -> str:
 ## Product Sketch
 
 ### Value Proposition
-{e(sketch.get('value_prop_headline', ''))}
+{e(sketch.get("value_prop_headline", ""))}
 
-{e(sketch.get('value_prop_body', ''))}
+{e(sketch.get("value_prop_body", ""))}
 
 ### Buyer Profile
-{e(sketch.get('buyer_profile', ''))}
+{e(sketch.get("buyer_profile", ""))}
 
 ### Risks
 {risks_md}
@@ -78,17 +75,9 @@ def _build_markdown(idea: Idea, build: BuildOutput) -> str:
 
 
 @router.get("/{idea_id}/prd")
-async def export_prd(
-    idea_id: str, session: AsyncSession = Depends(get_session)
-) -> Response:
-    build = (
-        await session.execute(
-            select(BuildOutput).where(BuildOutput.idea_id == idea_id)
-        )
-    ).scalars().first()
-    idea = (
-        await session.execute(select(Idea).where(Idea.id == idea_id))
-    ).scalars().first()
+async def export_prd(idea_id: str, session: AsyncSession = Depends(get_session)) -> Response:
+    build = (await session.execute(select(BuildOutput).where(BuildOutput.idea_id == idea_id))).scalars().first()
+    idea = (await session.execute(select(Idea).where(Idea.id == idea_id))).scalars().first()
 
     if not build or build.status != "ready" or not build.prd:
         raise HTTPException(status_code=404, detail="PRD not available")
@@ -105,17 +94,9 @@ async def export_prd(
 
 
 @router.get("/{idea_id}/plan")
-async def export_plan(
-    idea_id: str, session: AsyncSession = Depends(get_session)
-) -> Response:
-    build = (
-        await session.execute(
-            select(BuildOutput).where(BuildOutput.idea_id == idea_id)
-        )
-    ).scalars().first()
-    idea = (
-        await session.execute(select(Idea).where(Idea.id == idea_id))
-    ).scalars().first()
+async def export_plan(idea_id: str, session: AsyncSession = Depends(get_session)) -> Response:
+    build = (await session.execute(select(BuildOutput).where(BuildOutput.idea_id == idea_id))).scalars().first()
+    idea = (await session.execute(select(Idea).where(Idea.id == idea_id))).scalars().first()
 
     if not build or build.status != "ready" or not build.technical_plan:
         raise HTTPException(status_code=404, detail="Technical plan not available")
@@ -132,17 +113,9 @@ async def export_plan(
 
 
 @router.get("/{idea_id}/markdown")
-async def export_md(
-    idea_id: str, session: AsyncSession = Depends(get_session)
-) -> Response:
-    build = (
-        await session.execute(
-            select(BuildOutput).where(BuildOutput.idea_id == idea_id)
-        )
-    ).scalars().first()
-    idea = (
-        await session.execute(select(Idea).where(Idea.id == idea_id))
-    ).scalars().first()
+async def export_md(idea_id: str, session: AsyncSession = Depends(get_session)) -> Response:
+    build = (await session.execute(select(BuildOutput).where(BuildOutput.idea_id == idea_id))).scalars().first()
+    idea = (await session.execute(select(Idea).where(Idea.id == idea_id))).scalars().first()
 
     if not build or build.status != "ready":
         raise HTTPException(status_code=404, detail="Build not ready")
@@ -160,17 +133,9 @@ async def export_md(
 
 
 @router.get("/{idea_id}/pdf")
-async def export_pdf_route(
-    idea_id: str, session: AsyncSession = Depends(get_session)
-) -> Response:
-    build = (
-        await session.execute(
-            select(BuildOutput).where(BuildOutput.idea_id == idea_id)
-        )
-    ).scalars().first()
-    idea = (
-        await session.execute(select(Idea).where(Idea.id == idea_id))
-    ).scalars().first()
+async def export_pdf_route(idea_id: str, session: AsyncSession = Depends(get_session)) -> Response:
+    build = (await session.execute(select(BuildOutput).where(BuildOutput.idea_id == idea_id))).scalars().first()
+    idea = (await session.execute(select(Idea).where(Idea.id == idea_id))).scalars().first()
 
     if not build or build.status != "ready":
         raise HTTPException(status_code=404, detail="Build not ready")
@@ -180,9 +145,18 @@ async def export_pdf_route(
     from fpdf import FPDF  # noqa: PLC0415
 
     _UNICODE_MAP = {
-        "—": "--", "–": "-", "‘": "'", "’": "'",
-        "“": '"', "”": '"', "…": "...", "•": "*",
-        "·": "*", "‒": "-", "‑": "-", "‐": "-",
+        "—": "--",
+        "–": "-",
+        "‘": "'",
+        "’": "'",
+        "“": '"',
+        "”": '"',
+        "…": "...",
+        "•": "*",
+        "·": "*",
+        "‒": "-",
+        "‑": "-",
+        "‐": "-",
     }
 
     def _safe(text: str) -> str:

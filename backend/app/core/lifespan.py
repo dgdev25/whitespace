@@ -2,7 +2,7 @@ from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 
 from fastapi import FastAPI
-from sqlalchemy import select, update
+from sqlalchemy import update
 
 from app.core.config import settings
 from app.db.models.project import ProjectRun

@@ -53,10 +53,7 @@ class RuVectorClient:
                 CREATE INDEX IF NOT EXISTS {}_embedding_idx
                 ON {} USING hnsw (embedding ruvector_cosine_ops)
                 """
-            ).format(
-                psycopg.sql.Identifier(table),
-                safe_table
-            )
+            ).format(psycopg.sql.Identifier(table), safe_table)
         )
         self._initialized.add(table)
 
@@ -127,9 +124,4 @@ class RuVectorClient:
         except Exception as exc:
             raise RuntimeError(f"ruvector query failed: {exc}") from exc
 
-        return {
-            "results": [
-                {"id": row[0], "payload": row[1], "score": float(row[2])}
-                for row in rows
-            ]
-        }
+        return {"results": [{"id": row[0], "payload": row[1], "score": float(row[2])} for row in rows]}

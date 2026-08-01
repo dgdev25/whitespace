@@ -16,9 +16,7 @@ router = APIRouter(prefix="/build", tags=["build"])
 async def stream_build(idea_id: str, session: AsyncSession = Depends(get_session)):
     async def generator():
         for _ in range(180):
-            result = await session.execute(
-                select(BuildOutput).where(BuildOutput.idea_id == idea_id)
-            )
+            result = await session.execute(select(BuildOutput).where(BuildOutput.idea_id == idea_id))
             build = result.scalars().first()
             if not build:
                 yield {"data": json.dumps({"status": "not_found"})}

@@ -55,17 +55,19 @@ def fetch_cisa_kev_vulnerabilities(existing_ids: set[str]) -> list[dict]:
             f"Ransomware association: {ransomware}."
         ).strip()
 
-        results.append({
-            "arxiv_id": uid,
-            "title": f"{cve_id}: {vuln.get('vulnerabilityName', '')}",
-            "authors": vendor,
-            "abstract": abstract,
-            "full_text": abstract,
-            "categories": "cisa_kev,cyber,vulnerability",
-            "published_date": date_added,
-            "url": "https://www.cisa.gov/known-exploited-vulnerabilities-catalog",
-            "source": "cisa_kev",
-        })
+        results.append(
+            {
+                "arxiv_id": uid,
+                "title": f"{cve_id}: {vuln.get('vulnerabilityName', '')}",
+                "authors": vendor,
+                "abstract": abstract,
+                "full_text": abstract,
+                "categories": "cisa_kev,cyber,vulnerability",
+                "published_date": date_added,
+                "url": "https://www.cisa.gov/known-exploited-vulnerabilities-catalog",
+                "source": "cisa_kev",
+            }
+        )
 
     logger.info("[CISA KEV] %d new vulnerabilities (added since %s)", len(results), cutoff)
     return results

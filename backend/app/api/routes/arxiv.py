@@ -1,17 +1,16 @@
 from __future__ import annotations
 
+import html
 import re
 import time
 from datetime import datetime, timedelta, timezone
 from typing import Any
 from xml.etree import ElementTree
-import html
 
 import requests
 from fastapi import APIRouter, HTTPException, Query
 
 from app.schemas.common import ResponseEnvelope, make_meta
-
 
 CATEGORY_TAXONOMY_URL = "https://arxiv.org/category_taxonomy"
 ARXIV_API_URL = "http://export.arxiv.org/api/query"

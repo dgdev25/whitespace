@@ -66,17 +66,19 @@ def _fetch_org(org: str, existing_ids: set[str]) -> list[dict]:
 
         pub_date = item.get("publicationDate") or str(item.get("year", "")) or ""
 
-        papers.append({
-            "arxiv_id": uid,
-            "title": (item.get("title") or "").strip(),
-            "authors": authors_str,
-            "abstract": abstract,
-            "full_text": abstract,
-            "categories": f"semantic_scholar:{org.lower().replace(' ', '_')}",
-            "published_date": pub_date[:10] if pub_date else "",
-            "url": f"https://www.semanticscholar.org/paper/{item.get('paperId', '')}",
-            "source": "semantic_scholar",
-        })
+        papers.append(
+            {
+                "arxiv_id": uid,
+                "title": (item.get("title") or "").strip(),
+                "authors": authors_str,
+                "abstract": abstract,
+                "full_text": abstract,
+                "categories": f"semantic_scholar:{org.lower().replace(' ', '_')}",
+                "published_date": pub_date[:10] if pub_date else "",
+                "url": f"https://www.semanticscholar.org/paper/{item.get('paperId', '')}",
+                "source": "semantic_scholar",
+            }
+        )
 
     logger.info("[S2:%s] %d new papers", org, len(papers))
     return papers

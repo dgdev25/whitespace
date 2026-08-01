@@ -27,15 +27,11 @@ async def get_build(idea_id: str, session: AsyncSession = Depends(get_session)):
 
 
 @router.post("/{idea_id}", response_model=BuildOutputOut, status_code=202)
-async def trigger_build(
-    idea_id: str, background_tasks: BackgroundTasks, session: AsyncSession = Depends(get_session)
-):
+async def trigger_build(idea_id: str, background_tasks: BackgroundTasks, session: AsyncSession = Depends(get_session)):
     idea = (await session.execute(select(Idea).where(Idea.id == idea_id))).scalars().first()
     if not idea:
         raise HTTPException(404, "Idea not found")
-    existing = (
-        await session.execute(select(BuildOutput).where(BuildOutput.idea_id == idea_id))
-    ).scalars().first()
+    existing = (await session.execute(select(BuildOutput).where(BuildOutput.idea_id == idea_id))).scalars().first()
     if existing:
         if existing.status == "generating":
             return BuildOutputOut.model_validate(existing, from_attributes=True)

@@ -85,7 +85,7 @@ class OpenRouterRunner(LLMRunner):
             # A relay has already walked its own fallback chain before
             # answering 429, so retrying it just delays the same result.
             if resp.status_code == 429 and attempt < _RETRIES and not _using_relay():
-                time.sleep(2 ** attempt + random.random())
+                time.sleep(2**attempt + random.random())
                 continue
             resp.raise_for_status()
             break

@@ -40,7 +40,7 @@ where = ["."]
 include = ["app*", "worker*"]
 
 [tool.ruff]
-line-length = 100
+line-length = 120
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "B"]

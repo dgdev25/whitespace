@@ -72,7 +72,8 @@ def _list_handle_repos(handle: str) -> list[dict]:
         page, repos = 1, []
         while True:
             resp = requests.get(
-                endpoint, headers=hdrs,
+                endpoint,
+                headers=hdrs,
                 params={"type": "public", "per_page": 100, "page": page},
                 timeout=15,
             )
@@ -110,17 +111,19 @@ def fetch_handle_repos(
             if readme:
                 description = meta.get("description") or ""
                 safe_readme = f"<readme>\n{readme.replace('</readme>', '<\\/readme>')}\n</readme>"
-                results.append({
-                    "arxiv_id": uid,
-                    "title": f"{owner}/{repo_name}",
-                    "authors": owner,
-                    "abstract": description,
-                    "full_text": safe_readme,
-                    "categories": "",
-                    "published_date": (meta.get("created_at") or "")[:10],
-                    "url": meta.get("html_url") or f"https://github.com/{owner}/{repo_name}",
-                    "source": "github",
-                })
+                results.append(
+                    {
+                        "arxiv_id": uid,
+                        "title": f"{owner}/{repo_name}",
+                        "authors": owner,
+                        "abstract": description,
+                        "full_text": safe_readme,
+                        "categories": "",
+                        "published_date": (meta.get("created_at") or "")[:10],
+                        "url": meta.get("html_url") or f"https://github.com/{owner}/{repo_name}",
+                        "source": "github",
+                    }
+                )
 
         if on_progress:
             on_progress(i + 1, total)
@@ -171,17 +174,19 @@ def fetch_github_repos(repos: list[str], existing_ids: set[str]) -> list[dict]:
         description = meta.get("description") or ""
         # Wrap README in delimiters to prevent prompt injection from user-controlled content
         safe_readme = f"<readme>\n{readme.replace('</readme>', '<\\/readme>')}\n</readme>"
-        results.append({
-            "arxiv_id": uid,
-            "title": f"{owner}/{repo}",
-            "authors": owner,
-            "abstract": description,
-            "full_text": safe_readme,
-            "categories": ", ".join(meta.get("topics") or []),
-            "published_date": (meta.get("created_at") or "")[:10],
-            "url": meta.get("html_url") or f"https://github.com/{owner}/{repo}",
-            "source": "github",
-        })
+        results.append(
+            {
+                "arxiv_id": uid,
+                "title": f"{owner}/{repo}",
+                "authors": owner,
+                "abstract": description,
+                "full_text": safe_readme,
+                "categories": ", ".join(meta.get("topics") or []),
+                "published_date": (meta.get("created_at") or "")[:10],
+                "url": meta.get("html_url") or f"https://github.com/{owner}/{repo}",
+                "source": "github",
+            }
+        )
         logger.info("Fetched GitHub repo: %s/%s", owner, repo)
 
     return results

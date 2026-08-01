@@ -20,9 +20,7 @@ def embed_text(text: str) -> list[float]:
     import psycopg
 
     with psycopg.connect(_pg_url()) as conn:
-        row = conn.execute(
-            "SELECT ruvector_embed(%s)::text", (text[:8000],)
-        ).fetchone()
+        row = conn.execute("SELECT ruvector_embed(%s)::text", (text[:8000],)).fetchone()
 
     if row is None or row[0] is None:
         raise RuntimeError("ruvector_embed() returned NULL — is the embeddings feature compiled?")

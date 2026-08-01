@@ -30,6 +30,7 @@ async def security_headers(request: Request, call_next) -> Response:
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
     return response
 
+
 app.include_router(system.router, prefix="/api")
 app.include_router(ideas.router, prefix="/api")
 app.include_router(saved.router, prefix="/api")

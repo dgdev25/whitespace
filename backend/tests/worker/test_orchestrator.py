@@ -1,7 +1,9 @@
-import pytest
 from unittest.mock import patch
+
+import pytest
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
+
 from app.db.base import Base
 from app.db.models import *  # noqa: F401,F403 — registers all models with Base.metadata
 from worker.orchestrator import run_daily_pipeline

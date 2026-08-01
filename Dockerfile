@@ -9,11 +9,8 @@ WORKDIR /build/frontend
 COPY frontend/package.json frontend/package-lock.json ./
 RUN npm ci
 COPY frontend/ ./
-# `npm run build` runs `tsc -b` first, which type-checks stale test files
-# unrelated to the production bundle (missing testing-library exports,
-# imports of hooks/components that no longer exist) — calling vite directly
-# skips that and produces the same production output.
-RUN npx vite build
+# The production image uses the same type-checked build command as CI.
+RUN npm run build
 
 # Stage 2: python backend + the built frontend, one runtime image
 FROM python:3.12-slim AS runtime

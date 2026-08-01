@@ -43,9 +43,7 @@ async def save_idea(body: SaveRequest, session: AsyncSession = Depends(get_sessi
     idea = (await session.execute(select(Idea).where(Idea.id == idea_id))).scalars().first()
     if not idea:
         raise HTTPException(404, "Idea not found")
-    existing = (
-        await session.execute(select(SavedIdea).where(SavedIdea.idea_id == idea_id))
-    ).scalars().first()
+    existing = (await session.execute(select(SavedIdea).where(SavedIdea.idea_id == idea_id))).scalars().first()
     if existing:
         raise HTTPException(409, "Already saved")
     saved = SavedIdea(idea_id=idea_id)
@@ -53,9 +51,9 @@ async def save_idea(body: SaveRequest, session: AsyncSession = Depends(get_sessi
     try:
         await session.commit()
         await session.refresh(saved)
-    except IntegrityError:
+    except IntegrityError as exc:
         await session.rollback()
-        raise HTTPException(409, "Already saved")
+        raise HTTPException(409, "Already saved") from exc
     return SavedIdeaOut(
         id=saved.id,
         idea=IdeaSummary.model_validate(idea, from_attributes=True),

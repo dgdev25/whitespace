@@ -1,9 +1,11 @@
 import logging
+
 from apscheduler.schedulers.blocking import BlockingScheduler
 from apscheduler.triggers.cron import CronTrigger
+
 from app.core.config import settings
-from worker.orchestrator import run_daily_pipeline
 from worker.db import SessionLocal
+from worker.orchestrator import run_daily_pipeline
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -16,6 +18,7 @@ def _run():
 
 def main():
     from sqlalchemy import text
+
     try:
         with SessionLocal() as session:
             count = session.execute(text("SELECT COUNT(*) FROM ideas")).scalar()
@@ -30,9 +33,7 @@ def main():
         _run,
         CronTrigger(hour=settings.worker_schedule_hour, minute=settings.worker_schedule_minute),
     )
-    logger.info(
-        f"Worker scheduled at {settings.worker_schedule_hour:02d}:{settings.worker_schedule_minute:02d} daily"
-    )
+    logger.info(f"Worker scheduled at {settings.worker_schedule_hour:02d}:{settings.worker_schedule_minute:02d} daily")
     scheduler.start()
 
 

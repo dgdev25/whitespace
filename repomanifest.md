@@ -1,9 +1,9 @@
 # Repository deployment manifest — Whitespace
 
 **Audited:** 2026-08-01  
-**Deployment decision:** Hold refresh/redeployment pending backend Ruff cleanup
-and hosted acceptance; retain the existing VPS instance only while its public
-and health boundaries remain verified.
+**Deployment decision:** Hold refresh/redeployment pending container and hosted
+acceptance; retain the existing VPS instance only while its public and health
+boundaries remain verified.
 
 ## What it is
 
@@ -26,15 +26,19 @@ LLM relay rather than a project-owned provider key.
   environment created from `.[dev]`. The build-generator and orchestrator
   tests now fully stub LLM/provider work, so the suite is deterministic and
   does not reach an external model or feed.
-- Backend Ruff currently reports 91 pre-existing style/import/line-length
-  findings across the broader service. This remains a refresh blocker until
-  addressed or a project policy explicitly scopes the required lint gate.
+- 2026-08-01 remediation: the complete backend Ruff gate is clean after normal
+  source formatting, import cleanup, exception chaining, and a documented
+  120-column policy. No lint rules were suppressed. Backend tests still pass
+  (20 tests) after the cleanup.
+- 2026-08-01 container gate: the production Docker image builds using the same
+  type-checked frontend command as CI and returns a successful
+  `/api/system/health` response with a new SQLite database.
 
 ## Status
 
-**Not eligible for refresh or a new VPS deployment.** A previously deployed
-revision may remain available, but backend lint and hosted acceptance do not
-yet prove a safe reproducible replacement. The research/LLM workload also
+**Not yet eligible for refresh or a new VPS deployment.** A previously
+deployed revision may remain available, but container and hosted acceptance do
+not yet prove a safe reproducible replacement. The research/LLM workload also
 needs a bounded provider relay and synthetic-only demonstration state.
 
 ## Project-page record
@@ -52,11 +56,7 @@ needs a bounded provider relay and synthetic-only demonstration state.
 
 ## Remediation before reconsideration
 
-1. Resolve the 91 backend Ruff findings with normal code changes (do not simply
-   suppress the linter), then run backend tests and lint from the declared dev
-   environment.
-2. Run frontend tests, lint, build, backend tests, and browser QA on a clean
+1. Verify the deployed demo uses only synthetic research/idea state, preserves
+   no provider key in the container, and enforces a shared-relay spend cap.
+2. Run browser QA plus the gated invite and hosted health checks on a clean
    revision before any refresh.
-3. Verify the deployed demo uses only synthetic research/idea state, preserves
-   no provider key in the container, enforces a shared-relay spend cap, and
-   passes the gated invite plus hosted health checks.

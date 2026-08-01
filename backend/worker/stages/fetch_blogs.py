@@ -55,6 +55,7 @@ def _extract_text(url: str) -> str:
     """Use trafilatura to extract main article text from a URL."""
     try:
         import trafilatura
+
         downloaded = trafilatura.fetch_url(url)
         if not downloaded:
             return ""
@@ -89,17 +90,19 @@ def _fetch_rss(source: dict, existing_ids: set[str]) -> list[dict]:
 
         full_text = _extract_text(url) or abstract
 
-        papers.append({
-            "arxiv_id": uid,
-            "title": entry.get("title", "").strip(),
-            "authors": source["org"],
-            "abstract": abstract[:1000],
-            "full_text": full_text[:4000],
-            "categories": f"blog:{source['org'].lower().replace(' ', '_')}",
-            "published_date": published,
-            "url": url,
-            "source": "blog",
-        })
+        papers.append(
+            {
+                "arxiv_id": uid,
+                "title": entry.get("title", "").strip(),
+                "authors": source["org"],
+                "abstract": abstract[:1000],
+                "full_text": full_text[:4000],
+                "categories": f"blog:{source['org'].lower().replace(' ', '_')}",
+                "published_date": published,
+                "url": url,
+                "source": "blog",
+            }
+        )
 
     logger.info("[%s] RSS: %d new posts", source["name"], len(papers))
     return papers
@@ -171,17 +174,19 @@ def _fetch_sitemap(source: dict, existing_ids: set[str]) -> list[dict]:
         title = url.rstrip("/").split("/")[-1].replace("-", " ").title()
         abstract = full_text[:800]
 
-        papers.append({
-            "arxiv_id": uid,
-            "title": title,
-            "authors": source["org"],
-            "abstract": abstract,
-            "full_text": full_text[:4000],
-            "categories": f"blog:{source['org'].lower().replace(' ', '_')}",
-            "published_date": date.today().isoformat(),
-            "url": url,
-            "source": "blog",
-        })
+        papers.append(
+            {
+                "arxiv_id": uid,
+                "title": title,
+                "authors": source["org"],
+                "abstract": abstract,
+                "full_text": full_text[:4000],
+                "categories": f"blog:{source['org'].lower().replace(' ', '_')}",
+                "published_date": date.today().isoformat(),
+                "url": url,
+                "source": "blog",
+            }
+        )
 
     logger.info("[%s] Sitemap: %d new posts extracted", source["name"], len(papers))
     return papers

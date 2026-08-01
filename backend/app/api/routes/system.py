@@ -2,7 +2,7 @@ import asyncio
 import json
 import logging
 import threading
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends
 from sqlalchemy import text
@@ -13,14 +13,31 @@ from app.api.deps import get_session
 from app.core.config import settings
 from app.db.models.user_settings import UserSettings
 from app.runners.selector import set_model_prefs
-from app.schemas.system import DataSourcesIn, GitHubReposIn, HealthOut, OrgImportIn, OrgImportStatusOut, PipelineConfigIn, PipelineRunOut, PipelineStatusOut, RunnerModelIn, RunnerOut, RunnerPreferenceIn, RunnersOut, ScheduleConfigIn, ScheduleStatusOut, SourceToggleIn, SystemConfigOut
+from app.schemas.system import (
+    DataSourcesIn,
+    GitHubReposIn,
+    HealthOut,
+    OrgImportIn,
+    OrgImportStatusOut,
+    PipelineConfigIn,
+    PipelineRunOut,
+    PipelineStatusOut,
+    RunnerModelIn,
+    RunnerOut,
+    RunnerPreferenceIn,
+    RunnersOut,
+    ScheduleConfigIn,
+    ScheduleStatusOut,
+    SourceToggleIn,
+    SystemConfigOut,
+)
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/system", tags=["system"])
 
 _pipeline_lock = threading.Lock()
 _preferred_runner: str | None = None
-_active_orgs: list[str] | None = None       # None = use all from settings
+_active_orgs: list[str] | None = None  # None = use all from settings
 _active_categories: list[str] | None = None  # None = use all from settings
 
 _ALL_SOURCE_KEYS = ["arxiv", "semantic_scholar", "blogs", "github", "acl_anthology", "open_alex"]
@@ -29,11 +46,16 @@ _ALL_SOURCE_KEYS = ["arxiv", "semantic_scholar", "blogs", "github", "acl_antholo
 def _resolve_enabled_sources(raw: dict | None) -> dict[str, bool]:
     return {k: (raw or {}).get(k, True) for k in _ALL_SOURCE_KEYS}
 
+
 # Org import state
 _org_import_lock = threading.Lock()
 _org_import_state: dict = {
-    "running": False, "handle": None, "scanned": 0,
-    "total": None, "imported": 0, "message": "",
+    "running": False,
+    "handle": None,
+    "scanned": 0,
+    "total": None,
+    "imported": 0,
+    "message": "",
 }
 
 # Scheduling state
@@ -81,9 +103,7 @@ async def health(session: AsyncSession = Depends(get_session)):
         db_status = "error"
     row = None
     if db_status == "ok":
-        result = await session.execute(
-            text("SELECT run_date FROM ingestion_runs ORDER BY started_at DESC LIMIT 1")
-        )
+        result = await session.execute(text("SELECT run_date FROM ingestion_runs ORDER BY started_at DESC LIMIT 1"))
         row = result.fetchone()
     return HealthOut(status="ok", database=db_status, last_ingestion_run=row[0] if row else None)
 
@@ -91,13 +111,21 @@ async def health(session: AsyncSession = Depends(get_session)):
 def _build_runner_checks() -> list[RunnerOut]:
     import os
     import shutil
+
     return [
         RunnerOut(name="claude_cli", label="Claude CLI", available=shutil.which("claude") is not None, method="cli"),
         RunnerOut(name="codex_cli", label="Codex CLI", available=shutil.which("codex") is not None, method="cli"),
         RunnerOut(name="gemini_cli", label="Gemini CLI", available=shutil.which("gemini") is not None, method="cli"),
-        RunnerOut(name="anthropic", label="Anthropic API", available=bool(os.getenv("ANTHROPIC_API_KEY")), method="api"),
+        RunnerOut(
+            name="anthropic", label="Anthropic API", available=bool(os.getenv("ANTHROPIC_API_KEY")), method="api"
+        ),
         RunnerOut(name="gemini", label="Gemini API", available=bool(os.getenv("GEMINI_API_KEY")), method="api"),
-        RunnerOut(name="openrouter", label="OpenRouter", available=bool(os.getenv("OPENROUTER_API_KEY")), method="api"),
+        RunnerOut(
+            name="openrouter",
+            label="OpenRouter",
+            available=bool(os.getenv("OPENROUTER_API_KEY")),
+            method="api",
+        ),
     ]
 
 
@@ -120,9 +148,11 @@ async def set_runner(body: RunnerPreferenceIn):
         match = next((r for r in checks if r.name == body.name), None)
         if not match:
             from fastapi import HTTPException
+
             raise HTTPException(status_code=400, detail=f"Unknown runner: {body.name}")
         if not match.available:
             from fastapi import HTTPException
+
             raise HTTPException(status_code=400, detail=f"Runner '{body.name}' is not available")
     _preferred_runner = body.name
     if _preferred_runner and any(r.name == _preferred_runner and r.available for r in checks):
@@ -142,6 +172,7 @@ async def set_runner_model(body: RunnerModelIn, session: AsyncSession = Depends(
         prefs.pop(body.runner, None)
     user_cfg.runner_model_prefs = prefs
     from sqlalchemy.orm.attributes import flag_modified
+
     flag_modified(user_cfg, "runner_model_prefs")
     await session.commit()
     set_model_prefs(prefs)
@@ -156,7 +187,10 @@ async def pipeline_status(session: AsyncSession = Depends(get_session)):
     if not running:
         _pipeline_lock.release()
     result = await session.execute(
-        text("SELECT id, completed_at FROM ingestion_runs WHERE completed_at IS NOT NULL ORDER BY completed_at DESC LIMIT 1")
+        text(
+            "SELECT id, completed_at FROM ingestion_runs "
+            "WHERE completed_at IS NOT NULL ORDER BY completed_at DESC LIMIT 1"
+        )
     )
     row = result.fetchone()
     return PipelineStatusOut(
@@ -209,11 +243,13 @@ def _schedule_tick():
     if not _schedule_enabled:
         return
     if _pipeline_lock.acquire(blocking=False):
+
         def _task():
             try:
                 _run_pipeline_sync()
             finally:
                 _pipeline_lock.release()
+
         threading.Thread(target=_task, daemon=True).start()
     # Reschedule regardless of whether we ran (don't pile up if already running)
     _schedule_next_run = datetime.now(timezone.utc) + timedelta(minutes=_schedule_interval_minutes)
@@ -263,10 +299,11 @@ async def set_schedule(body: ScheduleConfigIn):
 def _import_handle_sync(handle: str) -> None:
     from sqlalchemy import text as sql_text
     from sqlalchemy.orm.attributes import flag_modified
+
     from app.db.models.paper import Paper
     from app.db.models.user_settings import UserSettings
     from worker.db import SessionLocal
-    from worker.stages.fetch_github import fetch_handle_repos, _list_handle_repos
+    from worker.stages.fetch_github import _list_handle_repos, fetch_handle_repos
 
     try:
         with SessionLocal() as session:
@@ -276,39 +313,43 @@ def _import_handle_sync(handle: str) -> None:
             # This is separate from Papers creation: repos already in the DB or without
             # READMEs are still valid references for future pipeline runs.
             all_repo_meta = _list_handle_repos(handle)
-            all_slugs = [
-                f"{(r.get('owner') or {}).get('login', handle)}/{r['name']}"
-                for r in all_repo_meta
-            ]
+            all_slugs = [f"{(r.get('owner') or {}).get('login', handle)}/{r['name']}" for r in all_repo_meta]
 
             def _progress(scanned: int, total: int) -> None:
                 # No lock here — the import lock is already held (acquired by the route
                 # handler before spawning this thread). Taking it again would deadlock.
-                _org_import_state.update({"scanned": scanned, "total": total,
-                                          "message": f"Scanning {scanned} of {total}…"})
+                _org_import_state.update(
+                    {"scanned": scanned, "total": total, "message": f"Scanning {scanned} of {total}…"}
+                )
 
             repos = fetch_handle_repos(handle, existing_ids, on_progress=_progress)
             for p in repos:
-                session.add(Paper(
-                    arxiv_id=p["arxiv_id"],
-                    title=p["title"],
-                    authors=p["authors"],
-                    abstract=p.get("abstract", ""),
-                    full_text=p.get("full_text", ""),
-                    categories=p.get("categories", ""),
-                    published_date=p.get("published_date", ""),
-                    url=p.get("url", ""),
-                    source="github",
-                ))
+                session.add(
+                    Paper(
+                        arxiv_id=p["arxiv_id"],
+                        title=p["title"],
+                        authors=p["authors"],
+                        abstract=p.get("abstract", ""),
+                        full_text=p.get("full_text", ""),
+                        categories=p.get("categories", ""),
+                        published_date=p.get("published_date", ""),
+                        url=p.get("url", ""),
+                        source="github",
+                    )
+                )
 
             # Merge ALL slugs (not just newly-fetched ones) into UserSettings.github_repos.
             # Repos already imported as Papers or lacking READMEs are still useful references.
             user_cfg = session.get(UserSettings, 1)
             if user_cfg is None:
                 user_cfg = UserSettings(
-                    id=1, ideas_per_run=8, max_sources_per_run=40,
-                    cached_analyses_count=30, runner_model_prefs={},
-                    github_repos=[], enabled_sources={},
+                    id=1,
+                    ideas_per_run=8,
+                    max_sources_per_run=40,
+                    cached_analyses_count=30,
+                    runner_model_prefs={},
+                    github_repos=[],
+                    enabled_sources={},
                 )
                 session.add(user_cfg)
             existing_slugs = set(user_cfg.github_repos or [])
@@ -317,11 +358,13 @@ def _import_handle_sync(handle: str) -> None:
             flag_modified(user_cfg, "github_repos")
 
             session.commit()
-            _org_import_state.update({
-                "running": False,
-                "imported": len(repos),
-                "message": f"Done — {len(all_slugs)} repo(s) added from {handle} ({len(repos)} new)",
-            })
+            _org_import_state.update(
+                {
+                    "running": False,
+                    "imported": len(repos),
+                    "message": f"Done — {len(all_slugs)} repo(s) added from {handle} ({len(repos)} new)",
+                }
+            )
     except Exception as exc:
         logger.error("Org import failed: %s", exc, exc_info=True)
         _org_import_state.update({"running": False, "message": f"Error: {exc}"})
@@ -335,12 +378,17 @@ async def import_org_repos(body: OrgImportIn):
     handle = body.handle.strip().lstrip("@").rstrip("/")
     if not handle:
         from fastapi import HTTPException
+
         raise HTTPException(status_code=400, detail="handle must not be empty")
     if not _org_import_lock.acquire(blocking=False):
         return OrgImportStatusOut(**_org_import_state)
     _org_import_state = {
-        "running": True, "handle": handle, "scanned": 0,
-        "total": None, "imported": 0, "message": f"Starting scan of {handle}…",
+        "running": True,
+        "handle": handle,
+        "scanned": 0,
+        "total": None,
+        "imported": 0,
+        "message": f"Starting scan of {handle}…",
     }
     threading.Thread(target=_import_handle_sync, args=(handle,), daemon=True).start()
     return OrgImportStatusOut(**_org_import_state)
@@ -418,7 +466,9 @@ async def set_data_sources(body: DataSourcesIn, session: AsyncSession = Depends(
 @router.put("/github-repos", response_model=SystemConfigOut)
 async def set_github_repos(body: GitHubReposIn, session: AsyncSession = Depends(get_session)):
     import re
+
     from sqlalchemy.orm.attributes import flag_modified
+
     _slug_re = re.compile(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$")
     valid = [r for r in body.repos if _slug_re.match(r)]
     user_cfg = await _get_user_settings(session)
@@ -434,6 +484,7 @@ async def set_github_repos(body: GitHubReposIn, session: AsyncSession = Depends(
 async def toggle_source(body: SourceToggleIn, session: AsyncSession = Depends(get_session)):
     from fastapi import HTTPException
     from sqlalchemy.orm.attributes import flag_modified
+
     if body.source not in _ALL_SOURCE_KEYS:
         raise HTTPException(status_code=400, detail=f"Unknown source: {body.source!r}")
     user_cfg = await _get_user_settings(session)

@@ -10,7 +10,14 @@ from app.db.models.connected_idea import ConnectedIdea
 from app.db.models.idea import Idea
 from app.db.models.ingestion_run import IngestionRun
 from app.db.models.paper import Paper
-from app.schemas.ideas import ConnectedIdeaOut, HistoryGroup, IdeaDetail, IdeaSummary, PaperRef, TodayFeed
+from app.schemas.ideas import (
+    ConnectedIdeaOut,
+    HistoryGroup,
+    IdeaDetail,
+    IdeaSummary,
+    PaperRef,
+    TodayFeed,
+)
 
 router = APIRouter(prefix="/ideas", tags=["ideas"])
 
@@ -34,16 +41,11 @@ async def today_feed(
     # Fallback: no ideas generated today — return all persisted ideas, newest run first
     if not ideas and offset == 0:
         result = await session.execute(
-            select(Idea)
-            .order_by(Idea.created_at.desc(), Idea.novelty_score.desc())
-            .limit(limit)
-            .offset(offset)
+            select(Idea).order_by(Idea.created_at.desc(), Idea.novelty_score.desc()).limit(limit).offset(offset)
         )
         ideas = result.scalars().all()
 
-    run = await session.execute(
-        select(IngestionRun).where(IngestionRun.run_date == today)
-    )
+    run = await session.execute(select(IngestionRun).where(IngestionRun.run_date == today))
     run_row = run.scalars().first()
     return TodayFeed(
         date=today,
@@ -55,15 +57,11 @@ async def today_feed(
 @router.get("/history", response_model=list[HistoryGroup])
 async def idea_history(session: AsyncSession = Depends(get_session)):
     # Load runs newest-first so we can attach timestamps to ideas grouped by run
-    runs_result = await session.execute(
-        select(IngestionRun).order_by(IngestionRun.started_at.desc())
-    )
+    runs_result = await session.execute(select(IngestionRun).order_by(IngestionRun.started_at.desc()))
     runs = {r.id: r for r in runs_result.scalars().all()}
 
     ideas_result = await session.execute(
-        select(Idea)
-        .where(Idea.featured_date.isnot(None))
-        .order_by(Idea.run_id.desc(), Idea.novelty_score.desc())
+        select(Idea).where(Idea.featured_date.isnot(None)).order_by(Idea.run_id.desc(), Idea.novelty_score.desc())
     )
     ideas = ideas_result.scalars().all()
 
@@ -100,12 +98,14 @@ async def idea_history(session: AsyncSession = Depends(get_session)):
         run_counts[d] = run_counts.get(d, 0) + 1
         count = run_counts[d]
         label = f"Run #{count}" if count > 1 else ""
-        result.append(HistoryGroup(
-            date=d,
-            run_id=meta["run_id"],
-            run_label=label,
-            ideas=groups[key],
-        ))
+        result.append(
+            HistoryGroup(
+                date=d,
+                run_id=meta["run_id"],
+                run_label=label,
+                ideas=groups[key],
+            )
+        )
     return result
 
 
@@ -128,29 +128,31 @@ async def idea_detail(idea_id: str, session: AsyncSession = Depends(get_session)
         raise HTTPException(404, "Idea not found")
 
     paper_ids: list[str] = idea.paper_ids or []
-    papers_result = await session.execute(
-        select(Paper).where(Paper.arxiv_id.in_(paper_ids))
-    )
+    papers_result = await session.execute(select(Paper).where(Paper.arxiv_id.in_(paper_ids)))
     paper_map = {p.arxiv_id: p for p in papers_result.scalars().all()}
     paper_refs: list[PaperRef] = []
     for pid in paper_ids:
         p = paper_map.get(pid)
         if p:
-            paper_refs.append(PaperRef(
-                arxiv_id=pid,
-                title=p.title or pid,
-                url=p.url or "",
-                source=p.source or "arxiv",
-            ))
+            paper_refs.append(
+                PaperRef(
+                    arxiv_id=pid,
+                    title=p.title or pid,
+                    url=p.url or "",
+                    source=p.source or "arxiv",
+                )
+            )
         else:
             # Fallback: construct from ID shape
             is_github = pid.startswith("github:")
-            paper_refs.append(PaperRef(
-                arxiv_id=pid,
-                title=pid.replace("github:", "") if is_github else pid,
-                url=f"https://github.com/{pid[7:]}" if is_github else f"https://arxiv.org/abs/{pid}",
-                source="github" if is_github else "arxiv",
-            ))
+            paper_refs.append(
+                PaperRef(
+                    arxiv_id=pid,
+                    title=pid.replace("github:", "") if is_github else pid,
+                    url=f"https://github.com/{pid[7:]}" if is_github else f"https://arxiv.org/abs/{pid}",
+                    source="github" if is_github else "arxiv",
+                )
+            )
 
     conn_result = await session.execute(
         select(ConnectedIdea, Idea)
@@ -161,7 +163,9 @@ async def idea_detail(idea_id: str, session: AsyncSession = Depends(get_session)
     )
     connections = [
         ConnectedIdeaOut(
-            id=i.id, title=i.title, badge=i.badge,
+            id=i.id,
+            title=i.title,
+            badge=i.badge,
             shared_paper_count=c.shared_paper_count,
         )
         for c, i in conn_result.all()

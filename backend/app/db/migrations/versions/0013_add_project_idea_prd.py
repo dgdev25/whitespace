@@ -1,4 +1,5 @@
 """add prd column to project_ideas"""
+
 import sqlalchemy as sa
 from alembic import op
 

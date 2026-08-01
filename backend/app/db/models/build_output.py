@@ -10,9 +10,7 @@ from app.db.base import Base
 class BuildOutput(Base):
     __tablename__ = "build_outputs"
     id: Mapped[str] = mapped_column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
-    idea_id: Mapped[str] = mapped_column(
-        ForeignKey("ideas.id", ondelete="CASCADE"), unique=True, index=True
-    )
+    idea_id: Mapped[str] = mapped_column(ForeignKey("ideas.id", ondelete="CASCADE"), unique=True, index=True)
     product_sketch: Mapped[dict] = mapped_column(JSON)
     technical_plan: Mapped[str] = mapped_column(Text)
     prd: Mapped[str | None] = mapped_column(Text, nullable=True)

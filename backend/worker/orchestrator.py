@@ -1,32 +1,33 @@
 import logging
 from datetime import date, datetime, timezone
-from sqlalchemy.orm import Session
+
 from sqlalchemy import text
+from sqlalchemy.orm import Session
 from sqlalchemy.orm.attributes import flag_modified
+
 from app.core.config import settings
-from app.db.models.paper import Paper
 from app.db.models.chunk import Chunk
 from app.db.models.ingestion_run import IngestionRun
+from app.db.models.paper import Paper
 from app.pipeline.chunking import chunk_text
 from worker import progress as prog
-from worker.stages.fetch import fetch_new_papers
-from worker.stages.fetch_blogs import fetch_blog_posts
-from worker.stages.fetch_github import fetch_github_repos
-from worker.stages.fetch_semantic_scholar import fetch_semantic_scholar_papers
-from worker.stages.fetch_acl_anthology import fetch_acl_anthology_papers
-from worker.stages.fetch_open_alex import fetch_open_alex_papers
-from worker.stages.fetch_cisa_kev import fetch_cisa_kev_vulnerabilities
-from worker.stages.fetch_ssrn import fetch_ssrn_papers
 from worker.stages.analyse import analyse_papers
+from worker.stages.connect import compute_connections
 from worker.stages.critique import critique_analyses
+from worker.stages.fetch import fetch_new_papers
+from worker.stages.fetch_acl_anthology import fetch_acl_anthology_papers
+from worker.stages.fetch_blogs import fetch_blog_posts
+from worker.stages.fetch_cisa_kev import fetch_cisa_kev_vulnerabilities
+from worker.stages.fetch_github import fetch_github_repos
+from worker.stages.fetch_open_alex import fetch_open_alex_papers
+from worker.stages.fetch_semantic_scholar import fetch_semantic_scholar_papers
+from worker.stages.fetch_ssrn import fetch_ssrn_papers
 from worker.stages.gap_map import map_gaps
-from worker.stages.synthesise import synthesise_ideas
 from worker.stages.score import score_ideas
 from worker.stages.select import select_and_persist
-from worker.stages.connect import compute_connections
+from worker.stages.synthesise import synthesise_ideas
 
 logger = logging.getLogger(__name__)
-
 
 
 def run_daily_pipeline(
@@ -142,8 +143,14 @@ def run_daily_pipeline(
         raw_all = raw_arxiv + raw_blogs + raw_s2 + raw_github + raw_acl + raw_oa + raw_cisa + raw_ssrn
         logger.info(
             "Fetched — arXiv: %d, blogs: %d, S2: %d, GitHub: %d, ACL: %d, OpenAlex: %d, CISA: %d, SSRN: %d",
-            len(raw_arxiv), len(raw_blogs), len(raw_s2), len(raw_github), len(raw_acl), len(raw_oa),
-            len(raw_cisa), len(raw_ssrn),
+            len(raw_arxiv),
+            len(raw_blogs),
+            len(raw_s2),
+            len(raw_github),
+            len(raw_acl),
+            len(raw_oa),
+            len(raw_cisa),
+            len(raw_ssrn),
         )
 
         if raw_all:
@@ -176,12 +183,14 @@ def run_daily_pipeline(
                 if text_to_chunk:
                     chunks = chunk_text(text_to_chunk)
                     for idx, chunk_str in enumerate(chunks):
-                        session.add(Chunk(
-                            paper_id=paper.id,
-                            text=chunk_str,
-                            chunk_index=idx,
-                            token_count=len(chunk_str.split()),
-                        ))
+                        session.add(
+                            Chunk(
+                                paper_id=paper.id,
+                                text=chunk_str,
+                                chunk_index=idx,
+                                token_count=len(chunk_str.split()),
+                            )
+                        )
             session.commit()
 
             paper_dicts = [
@@ -221,8 +230,13 @@ def run_daily_pipeline(
             if unanalysed:
                 prog.emit("analyse", f"Analysing {len(unanalysed)} previously-imported sources…", "running")
                 unanalysed_dicts = [
-                    {"title": p.title, "abstract": p.abstract, "full_text": p.full_text,
-                     "arxiv_id": p.arxiv_id, "source": p.source}
+                    {
+                        "title": p.title,
+                        "abstract": p.abstract,
+                        "full_text": p.full_text,
+                        "arxiv_id": p.arxiv_id,
+                        "source": p.source,
+                    }
                     for p in unanalysed
                 ]
                 extra_analyses = analyse_papers(unanalysed_dicts)
@@ -279,8 +293,13 @@ def run_daily_pipeline(
                 to_analyse = uncached[:max_new]
                 prog.emit("analyse", f"Analysing {len(to_analyse)} unanalysed sources…", "running")
                 uncached_dicts = [
-                    {"title": p.title, "abstract": p.abstract, "full_text": p.full_text,
-                     "arxiv_id": p.arxiv_id, "source": getattr(p, "source", "arxiv")}
+                    {
+                        "title": p.title,
+                        "abstract": p.abstract,
+                        "full_text": p.full_text,
+                        "arxiv_id": p.arxiv_id,
+                        "source": getattr(p, "source", "arxiv"),
+                    }
                     for p in to_analyse
                 ]
                 uncached_analyses = analyse_papers(uncached_dicts)
@@ -319,14 +338,14 @@ def run_daily_pipeline(
 
         # 9. Select
         prog.emit("select", f"Selecting top {n_ideas} ideas…", "running")
-        idea_records = select_and_persist(
-            session, ideas_scored, n=n_ideas, run_id=run.id
-        )
+        idea_records = select_and_persist(session, ideas_scored, n=n_ideas, run_id=run.id)
         prog.emit("select", f"{len(idea_records)} ideas saved", "done")
 
         # 9b. Persist ProjectIdea records if this run is scoped to a project
         if project_id is not None and project_run_id is not None:
-            from app.db.models.project import ProjectIdea, ProjectRun as ProjectRunModel
+            from app.db.models.project import ProjectIdea
+            from app.db.models.project import ProjectRun as ProjectRunModel
+
             for i, idea in enumerate(ideas_scored[:n_ideas]):
                 nov = float(idea.get("novelty_score", 0.5))
                 feas = float(idea.get("feasibility_score", 0.5))

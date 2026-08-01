@@ -69,24 +69,23 @@ def _fetch_query(query: str, existing_ids: set[str]) -> list[dict]:
         if not abstract:
             continue
 
-        authors = ", ".join(
-            a.get("author", {}).get("display_name", "")
-            for a in (work.get("authorships") or [])[:5]
-        )
+        authors = ", ".join(a.get("author", {}).get("display_name", "") for a in (work.get("authorships") or [])[:5])
         loc = work.get("primary_location") or {}
         url = loc.get("landing_page_url") or work.get("doi") or ""
 
-        results.append({
-            "arxiv_id": uid,
-            "title": (work.get("title") or "").strip(),
-            "authors": authors,
-            "abstract": abstract,
-            "full_text": abstract,
-            "categories": "ssrn,insurance,risk_management,cyber",
-            "published_date": work.get("publication_date", ""),
-            "url": url,
-            "source": "ssrn",
-        })
+        results.append(
+            {
+                "arxiv_id": uid,
+                "title": (work.get("title") or "").strip(),
+                "authors": authors,
+                "abstract": abstract,
+                "full_text": abstract,
+                "categories": "ssrn,insurance,risk_management,cyber",
+                "published_date": work.get("publication_date", ""),
+                "url": url,
+                "source": "ssrn",
+            }
+        )
 
     logger.info("[SSRN/Risk] query %r → %d new papers", query, len(results))
     return results

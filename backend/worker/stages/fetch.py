@@ -61,19 +61,17 @@ def fetch_new_papers(
         arxiv_id = _extract_arxiv_id(raw_id)
         if not arxiv_id or arxiv_id in existing_ids:
             continue
-        papers.append({
-            "arxiv_id": arxiv_id,
-            "title": (getattr(entry, "title", "") or "").strip(),
-            "authors": ", ".join(
-                a.name for a in getattr(entry, "authors", [])
-            ),
-            "abstract": (getattr(entry, "summary", "") or "").strip(),
-            "categories": ", ".join(
-                t.term for t in getattr(entry, "tags", [])
-            ),
-            "published_date": (getattr(entry, "published", "") or "")[:10],
-            "url": f"https://arxiv.org/abs/{arxiv_id}",
-        })
+        papers.append(
+            {
+                "arxiv_id": arxiv_id,
+                "title": (getattr(entry, "title", "") or "").strip(),
+                "authors": ", ".join(a.name for a in getattr(entry, "authors", [])),
+                "abstract": (getattr(entry, "summary", "") or "").strip(),
+                "categories": ", ".join(t.term for t in getattr(entry, "tags", [])),
+                "published_date": (getattr(entry, "published", "") or "")[:10],
+                "url": f"https://arxiv.org/abs/{arxiv_id}",
+            }
+        )
 
     logger.info("Fetched %d new papers for orgs: %s", len(papers), valid_orgs)
     return papers

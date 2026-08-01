@@ -14,8 +14,7 @@ _MAX_WORKERS = 6
 
 def _analyse_one(paper: dict, runner) -> Optional[dict]:
     prompt = (
-        _PROMPT
-        .replace("{{title}}", paper.get("title", ""))
+        _PROMPT.replace("{{title}}", paper.get("title", ""))
         .replace("{{abstract}}", paper.get("abstract", ""))
         .replace("{{full_text}}", (paper.get("full_text") or paper.get("abstract", ""))[:3000])
     )

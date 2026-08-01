@@ -1,7 +1,5 @@
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 from worker.stages.fetch import fetch_new_papers
 
 
@@ -29,9 +27,7 @@ def test_fetch_deduplicates_existing():
         mock_get.return_value.raise_for_status = lambda: None
         with patch("worker.stages.fetch.feedparser.parse") as mock_parse:
             mock_parse.return_value.entries = [_make_entry("2601.00001")]
-            papers = fetch_new_papers(
-                orgs=["DeepMind"], categories=["cs.AI"], existing_ids=existing_ids
-            )
+            papers = fetch_new_papers(orgs=["DeepMind"], categories=["cs.AI"], existing_ids=existing_ids)
     assert papers == []
 
 
@@ -41,9 +37,7 @@ def test_fetch_returns_new_papers():
         mock_get.return_value.raise_for_status = lambda: None
         with patch("worker.stages.fetch.feedparser.parse") as mock_parse:
             mock_parse.return_value.entries = [_make_entry("2601.99999", "New Paper")]
-            papers = fetch_new_papers(
-                orgs=["Anthropic"], categories=["cs.LG"], existing_ids=set()
-            )
+            papers = fetch_new_papers(orgs=["Anthropic"], categories=["cs.LG"], existing_ids=set())
     assert len(papers) == 1
     assert papers[0]["arxiv_id"] == "2601.99999"
     assert papers[0]["title"] == "New Paper"
@@ -70,6 +64,7 @@ def test_fetch_builds_org_category_query():
 
 def test_fetch_skips_invalid_orgs(caplog):
     import logging
+
     with patch("worker.stages.fetch.requests.get") as mock_get:
         mock_get.return_value.text = "<feed/>"
         mock_get.return_value.raise_for_status = lambda: None
@@ -88,7 +83,9 @@ def test_fetch_skips_invalid_orgs(caplog):
 
 def test_fetch_handles_request_error(caplog):
     import logging
+
     import requests as req
+
     with patch("worker.stages.fetch.requests.get", side_effect=req.RequestException("timeout")):
         with patch("worker.stages.fetch.feedparser.parse") as mock_parse:
             mock_parse.return_value.entries = []

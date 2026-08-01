@@ -28,10 +28,10 @@ class SystemConfigOut(BaseModel):
     max_sources_per_run: int
     cached_analyses_count: int
     runner_model_prefs: dict[str, str]
-    arxiv_orgs: list[str]        # full pool from .env
+    arxiv_orgs: list[str]  # full pool from .env
     arxiv_categories: list[str]  # full pool from .env
-    active_orgs: list[str]       # user-selected subset
-    active_categories: list[str] # user-selected subset
+    active_orgs: list[str]  # user-selected subset
+    active_categories: list[str]  # user-selected subset
     github_repos: list[str]
     enabled_sources: dict[str, bool]
 

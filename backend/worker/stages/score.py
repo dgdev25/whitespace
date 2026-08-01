@@ -1,8 +1,9 @@
 import logging
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
+
 from app.pipeline.json_parsing import run_and_parse_json
-from app.runners.selector import select_runner_or_raise, _default_runners
+from app.runners.selector import _default_runners, select_runner_or_raise
 
 logger = logging.getLogger(__name__)
 
@@ -11,8 +12,7 @@ _PROMPT = (Path(__file__).parent.parent / "prompts" / "score.md").read_text()
 
 def _score_one(idea: dict, runner) -> dict:
     prompt = (
-        _PROMPT
-        .replace("{{title}}", idea.get("title", ""))
+        _PROMPT.replace("{{title}}", idea.get("title", ""))
         .replace("{{description}}", idea.get("description", ""))
         .replace("{{why_novel}}", idea.get("why_novel", ""))
         .replace("{{who_builds}}", idea.get("who_builds", ""))

@@ -1,11 +1,11 @@
 import pytest
-from httpx import AsyncClient, ASGITransport
-from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
+from httpx import ASGITransport, AsyncClient
+from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
-from app.main import app
-from app.db.base import Base
 from app.api.deps import get_session
+from app.db.base import Base
 from app.db.models import *  # noqa: F401, F403 — ensure all models are registered
+from app.main import app
 
 TEST_DB = "sqlite+aiosqlite:///:memory:"
 

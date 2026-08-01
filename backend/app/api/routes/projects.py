@@ -1,10 +1,10 @@
+import asyncio
 import logging
 import threading
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
-import asyncio
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy import func, select
@@ -33,6 +33,7 @@ def _get_prd_template() -> str:
         _PRD_TEMPLATE = (Path(__file__).parent.parent.parent.parent / "worker" / "prompts" / "prd.md").read_text()
     return _PRD_TEMPLATE
 
+
 # Per-project run locks: project_id -> Lock
 _project_run_locks: dict[int, threading.Lock] = {}
 # Track active run ids: project_id -> run_id
@@ -41,18 +42,18 @@ _locks_meta = threading.Lock()
 
 # Ordered stage definitions — name matches prog.emit() step keys
 _STAGE_META: list[tuple[str, str]] = [
-    ("fetch_arxiv",  "Fetch arXiv"),
-    ("fetch_s2",     "Fetch Semantic Scholar"),
-    ("fetch_blogs",  "Fetch Blogs"),
+    ("fetch_arxiv", "Fetch arXiv"),
+    ("fetch_s2", "Fetch Semantic Scholar"),
+    ("fetch_blogs", "Fetch Blogs"),
     ("fetch_github", "Fetch GitHub"),
-    ("fetch_acl",    "Fetch ACL Anthology"),
-    ("fetch_oa",     "Fetch OpenAlex"),
-    ("analyse",      "Analyse Sources"),
-    ("critique",     "Critical Review"),
-    ("gap_map",      "Gap Map"),
-    ("synthesise",   "Synthesise Ideas"),
-    ("score",        "Score Ideas"),
-    ("select",       "Select Ideas"),
+    ("fetch_acl", "Fetch ACL Anthology"),
+    ("fetch_oa", "Fetch OpenAlex"),
+    ("analyse", "Analyse Sources"),
+    ("critique", "Critical Review"),
+    ("gap_map", "Gap Map"),
+    ("synthesise", "Synthesise Ideas"),
+    ("score", "Score Ideas"),
+    ("select", "Select Ideas"),
 ]
 
 
@@ -77,9 +78,9 @@ def _get_project_lock(project_id: int) -> threading.Lock:
 
 
 def _run_project_pipeline_sync(project_id: int, run_id: int) -> None:
+    from worker import progress as prog
     from worker.db import SessionLocal
     from worker.orchestrator import run_daily_pipeline
-    from worker import progress as prog
 
     with SessionLocal() as s:
         run = s.get(ProjectRun, run_id)
@@ -135,9 +136,7 @@ def _run_project_pipeline_sync(project_id: int, run_id: int) -> None:
 
 
 async def _project_out(session: AsyncSession, project: Project) -> ProjectOut:
-    ideas_count_result = await session.execute(
-        select(func.count()).where(ProjectIdea.project_id == project.id)
-    )
+    ideas_count_result = await session.execute(select(func.count()).where(ProjectIdea.project_id == project.id))
     ideas_count = ideas_count_result.scalar() or 0
 
     # papers_count: count distinct paper_refs across all project ideas
@@ -145,10 +144,7 @@ async def _project_out(session: AsyncSession, project: Project) -> ProjectOut:
     papers_count = 0
 
     last_run_result = await session.execute(
-        select(ProjectRun)
-        .where(ProjectRun.project_id == project.id)
-        .order_by(ProjectRun.started_at.desc())
-        .limit(1)
+        select(ProjectRun).where(ProjectRun.project_id == project.id).order_by(ProjectRun.started_at.desc()).limit(1)
     )
     last_run_row = last_run_result.scalar_one_or_none()
     last_run = ProjectRunOut.model_validate(last_run_row) if last_run_row else None
@@ -176,9 +172,7 @@ async def list_projects(session: AsyncSession = Depends(get_session)) -> list[Pr
 
 
 @router.post("", response_model=ProjectOut, status_code=201)
-async def create_project(
-    body: ProjectCreate, session: AsyncSession = Depends(get_session)
-) -> ProjectOut:
+async def create_project(body: ProjectCreate, session: AsyncSession = Depends(get_session)) -> ProjectOut:
     project = Project(
         name=body.name,
         domain=body.domain,
@@ -194,9 +188,7 @@ async def create_project(
 
 
 @router.get("/{project_id}", response_model=ProjectOut)
-async def get_project(
-    project_id: int, session: AsyncSession = Depends(get_session)
-) -> ProjectOut:
+async def get_project(project_id: int, session: AsyncSession = Depends(get_session)) -> ProjectOut:
     project = await session.get(Project, project_id)
     if project is None:
         raise HTTPException(status_code=404, detail="Project not found")
@@ -232,9 +224,7 @@ async def update_project(
 
 
 @router.delete("/{project_id}", status_code=204)
-async def delete_project(
-    project_id: int, session: AsyncSession = Depends(get_session)
-) -> None:
+async def delete_project(project_id: int, session: AsyncSession = Depends(get_session)) -> None:
     project = await session.get(Project, project_id)
     if project is None:
         raise HTTPException(status_code=404, detail="Project not found")
@@ -287,9 +277,8 @@ class PrdResponse(BaseModel):
 
 
 def _generate_prd_sync(project_id: int, idea_id: str) -> str:
-    from worker.db import SessionLocal
-    from worker.build_generator import generate_prd
     from app.runners.selector import _default_runners, select_runner_or_raise
+    from worker.db import SessionLocal
 
     with SessionLocal() as s:
         idea = s.get(ProjectIdea, idea_id)
@@ -306,13 +295,14 @@ def _generate_prd_sync(project_id: int, idea_id: str) -> str:
         def _s(v: str) -> str:
             return v.replace("{{", "{ {").replace("}}", "} }") if v else ""
 
-        prompt = (prd_template
-            .replace("{{title}}", _s(idea.title))
+        prompt = (
+            prd_template.replace("{{title}}", _s(idea.title))
             .replace("{{description}}", _s(idea.description))
             .replace("{{why_novel}}", _s(idea.why_novel or ""))
             .replace("{{who_builds}}", _s(idea.who_builds or ""))
             .replace("{{who_buys}}", _s(idea.who_buys or ""))
-            .replace("{{paper_ids}}", paper_refs))
+            .replace("{{paper_ids}}", paper_refs)
+        )
 
         prd_text = runner.run(prompt)
         # Strip any preamble before the first markdown heading
@@ -358,18 +348,14 @@ async def list_project_runs(
         raise HTTPException(status_code=404, detail="Project not found")
 
     result = await session.execute(
-        select(ProjectRun)
-        .where(ProjectRun.project_id == project_id)
-        .order_by(ProjectRun.started_at.desc())
+        select(ProjectRun).where(ProjectRun.project_id == project_id).order_by(ProjectRun.started_at.desc())
     )
     runs = result.scalars().all()
     return [ProjectRunOut.model_validate(r) for r in runs]
 
 
 @router.post("/{project_id}/run", response_model=ProjectRunStatusOut)
-async def trigger_project_run(
-    project_id: int, session: AsyncSession = Depends(get_session)
-) -> ProjectRunStatusOut:
+async def trigger_project_run(project_id: int, session: AsyncSession = Depends(get_session)) -> ProjectRunStatusOut:
     project = await session.get(Project, project_id)
     if project is None:
         raise HTTPException(status_code=404, detail="Project not found")
@@ -413,9 +399,7 @@ async def trigger_project_run(
 
 
 @router.get("/{project_id}/run/status", response_model=ProjectRunStatusOut)
-async def get_project_run_status(
-    project_id: int, session: AsyncSession = Depends(get_session)
-) -> ProjectRunStatusOut:
+async def get_project_run_status(project_id: int, session: AsyncSession = Depends(get_session)) -> ProjectRunStatusOut:
     from worker import progress as prog
 
     project = await session.get(Project, project_id)

@@ -1,21 +1,26 @@
 from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
-from app.db.models.idea import Idea
+
 from app.db.models.connected_idea import ConnectedIdea
+from app.db.models.idea import Idea
 
 
 def compute_connections(session: Session, ideas: list[Idea]) -> None:
     if not ideas:
         return
     idea_ids = {i.id for i in ideas}
-    existing_rows = session.execute(
-        select(ConnectedIdea).where(
-            or_(
-                ConnectedIdea.idea_id.in_(idea_ids),
-                ConnectedIdea.connected_idea_id.in_(idea_ids),
+    existing_rows = (
+        session.execute(
+            select(ConnectedIdea).where(
+                or_(
+                    ConnectedIdea.idea_id.in_(idea_ids),
+                    ConnectedIdea.connected_idea_id.in_(idea_ids),
+                )
             )
         )
-    ).scalars().all()
+        .scalars()
+        .all()
+    )
     existing = {(row.idea_id, row.connected_idea_id) for row in existing_rows}
     for idea in ideas:
         idea_paper_set = set(idea.paper_ids or [])

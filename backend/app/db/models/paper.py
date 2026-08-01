@@ -27,6 +27,4 @@ class Paper(Base):
     source: Mapped[str] = mapped_column(String(32), default="arxiv", server_default="arxiv")
     analysis: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
-    chunks: Mapped[list[Chunk]] = relationship(
-        back_populates="paper", cascade="all, delete-orphan"
-    )
+    chunks: Mapped[list[Chunk]] = relationship(back_populates="paper", cascade="all, delete-orphan")

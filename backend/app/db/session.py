@@ -9,6 +9,7 @@ engine = create_async_engine(settings.database_url, echo=False)
 AsyncSessionLocal = async_sessionmaker(engine, expire_on_commit=False)
 
 if "sqlite" in settings.database_url:
+
     @event.listens_for(engine.sync_engine, "connect")
     def _set_wal_mode(dbapi_conn, _):
         cursor = dbapi_conn.cursor()
