@@ -84,7 +84,3 @@ export const createMockSystemConfig = (overrides = {}) => ({
   max_categories: 3,
   ...overrides,
 });
-
-// Re-export everything from @testing-library/react for convenience
-export * from "@testing-library/react";
-export { default as userEvent } from "@testing-library/user-event";

@@ -55,6 +55,10 @@ def test_pipeline_runs_with_stubs(sync_session):
             return_value={"gaps": ["gap1"]},
         ),
         patch(
+            "worker.orchestrator.critique_analyses",
+            return_value={"findings": []},
+        ),
+        patch(
             "worker.orchestrator.synthesise_ideas",
             return_value=stub_ideas,
         ),
@@ -63,7 +67,19 @@ def test_pipeline_runs_with_stubs(sync_session):
             side_effect=lambda x, **_: x,
         ),
     ):
-        run_daily_pipeline(sync_session)
+        run_daily_pipeline(
+            sync_session,
+            enabled_sources={
+                "arxiv": True,
+                "blogs": False,
+                "semantic_scholar": False,
+                "github": False,
+                "acl_anthology": False,
+                "open_alex": False,
+                "cisa_kev": False,
+                "ssrn": False,
+            },
+        )
 
     count = sync_session.execute(text("SELECT COUNT(*) FROM ideas")).scalar()
     assert count == 1

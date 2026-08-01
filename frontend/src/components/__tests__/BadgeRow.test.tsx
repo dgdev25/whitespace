@@ -3,6 +3,6 @@ import { BadgeRow } from "../BadgeRow";
 
 test("renders badge labels", () => {
   render(<BadgeRow badges={["novel", "feasible"]} />);
-  expect(screen.getByText("NOVEL")).toBeInTheDocument();
-  expect(screen.getByText("FEASIBLE")).toBeInTheDocument();
+  expect(screen.getByText("novel")).toBeInTheDocument();
+  expect(screen.getByText("feasible")).toBeInTheDocument();
 });

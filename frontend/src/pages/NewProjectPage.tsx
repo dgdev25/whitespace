@@ -94,7 +94,7 @@ const AUTO_INTERVAL_OPTIONS = [
   { label: "Manual only", value: 0 },
 ];
 
-function StepIndicator({ current, total }: { current: number; total: number }) {
+function StepIndicator({ current }: { current: number }) {
   const labels = ["Domain", "Sources", "Focus", "Confirm"];
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 0, marginBottom: 36 }}>
@@ -214,7 +214,7 @@ export function NewProjectPage() {
         Define a research domain and configure sources to start synthesising ideas.
       </p>
 
-      <StepIndicator current={step} total={4} />
+      <StepIndicator current={step} />
 
       {/* Step 1 — Domain */}
       {step === 1 && (

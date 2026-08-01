@@ -19,13 +19,6 @@ export function NavBar() {
 
   const steps = usePipelineStream(isRunning || triggerPipeline.isPending);
 
-  // Show progress panel when running; hide 3s after completion
-  useEffect(() => {
-    if (isRunning || triggerPipeline.isPending) {
-      setShowProgress(true);
-    }
-  }, [isRunning, triggerPipeline.isPending]);
-
   useEffect(() => {
     if (!isRunning && !triggerPipeline.isPending && showProgress) {
       const t = setTimeout(() => setShowProgress(false), 3000);
@@ -157,7 +150,7 @@ export function NavBar() {
             ) : "↻ Refresh Ideas"}
           </button>
 
-          {showProgress && <PipelineProgress steps={steps} />}
+          {(showProgress || isRunning || triggerPipeline.isPending) && <PipelineProgress steps={steps} />}
         </div>
       </div>
 

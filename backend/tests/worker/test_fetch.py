@@ -8,6 +8,7 @@ from worker.stages.fetch import fetch_new_papers
 def _make_entry(arxiv_id: str, title: str = "Test Paper") -> MagicMock:
     entry = MagicMock()
     entry.id = f"http://arxiv.org/abs/{arxiv_id}v1"
+    entry.get.side_effect = lambda key, default=None: entry.id if key == "id" else default
     entry.title = title
     entry.summary = "Abstract text here."
     author = MagicMock()

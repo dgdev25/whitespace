@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import ReactMarkdown from "react-markdown";
 import { useBuild, useGenerateBuild } from "../hooks/useBuild";
@@ -51,10 +51,10 @@ export function BuildOutputPage() {
   const tab: Tab = VALID_TABS.includes(tabParam as Tab) ? (tabParam as Tab) : "overview";
   const goTab = (t: Tab) => navigate(`/ideas/${id}/build/${t}`, { replace: true });
 
-  const triggerGenerate = (context: "build" | "prd" = "build") => {
+  const triggerGenerate = useCallback((context: "build" | "prd" = "build") => {
     setGeneratingFor(context);
     generate.mutate(id!);
-  };
+  }, [generate, id]);
 
   const isGenerating = build?.status === "generating" || generate.isPending;
   const isFailed = build?.status === "failed" && !generate.isPending;
@@ -64,10 +64,10 @@ export function BuildOutputPage() {
   // Auto-trigger generation when there's no build yet
   useEffect(() => {
     if (needsGeneration && !isLoading) {
-      triggerGenerate("build");
+      const timer = window.setTimeout(() => triggerGenerate("build"), 0);
+      return () => window.clearTimeout(timer);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [needsGeneration, isLoading]);
+  }, [needsGeneration, isLoading, triggerGenerate]);
 
   const tabStyle = (t: Tab) => ({
     padding: "14px 16px",

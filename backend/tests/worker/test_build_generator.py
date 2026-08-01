@@ -33,7 +33,8 @@ def test_build_generator_marks_ready():
     }
 
     with patch("worker.build_generator.generate_product_sketch", return_value=sketch), \
-         patch("worker.build_generator.generate_technical_plan", return_value="## Plan\nPhase 1"):
+         patch("worker.build_generator.generate_technical_plan", return_value="## Plan\nPhase 1"), \
+         patch("worker.build_generator.generate_prd", return_value="## PRD\nScope"):
         from worker.build_generator import run_build
         run_build(session, build.id, idea.id)
 

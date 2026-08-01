@@ -10,12 +10,13 @@ export interface PipelineStep {
 export function usePipelineStream(active: boolean) {
   const [steps, setSteps] = useState<Map<string, PipelineStep>>(new Map());
   const esRef = useRef<EventSource | null>(null);
+  const resetOnNextEvent = useRef(false);
 
   useEffect(() => {
     if (!active) return;
 
-    // Reset steps for the new run
-    setSteps(new Map());
+    // The first event of a new stream replaces prior-run progress.
+    resetOnNextEvent.current = true;
 
     const es = new EventSource("/api/system/pipeline/stream");
     esRef.current = es;
@@ -24,7 +25,8 @@ export function usePipelineStream(active: boolean) {
       try {
         const event: PipelineStep = JSON.parse(e.data);
         setSteps((prev) => {
-          const next = new Map(prev);
+          const next = resetOnNextEvent.current ? new Map<string, PipelineStep>() : new Map(prev);
+          resetOnNextEvent.current = false;
           next.set(event.step, event);
           return next;
         });

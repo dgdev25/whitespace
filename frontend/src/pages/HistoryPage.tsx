@@ -13,14 +13,6 @@ interface Row extends IdeaSummary {
   run_label: string;
 }
 
-function formatDate(iso: string) {
-  try {
-    return new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
-  } catch {
-    return iso;
-  }
-}
-
 function formatDateTime(iso: string) {
   try {
     const d = new Date(iso);
@@ -71,7 +63,7 @@ export function HistoryPage() {
       .filter(r => !badge || r.badge === badge)
       .filter(r => !q || r.title.toLowerCase().includes(q) || r.description.toLowerCase().includes(q))
       .sort((a, b) => {
-        let cmp = 0;
+        let cmp: number;
         if (sortKey === "title") cmp = a.title.localeCompare(b.title);
         else if (sortKey === "novelty_score") cmp = a.novelty_score - b.novelty_score;
         else if (sortKey === "feasibility_score") cmp = a.feasibility_score - b.feasibility_score;

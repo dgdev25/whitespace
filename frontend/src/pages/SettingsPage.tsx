@@ -123,7 +123,7 @@ export function SettingsPage() {
       setRepoPage(0);
     }
     prevOrgRunning.current = orgImport?.running ?? false;
-  }, [orgImport?.running]);
+  }, [orgImport, qc]);
 
   const tabStyle = (t: Tab): React.CSSProperties => ({
     background: "none",
