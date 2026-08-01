@@ -32,6 +32,19 @@ revision may remain available, but current source quality gates do not prove a
 safe reproducible replacement. The research/LLM workload also needs a bounded
 provider relay and synthetic-only demonstration state.
 
+## Project-page record
+
+**Updated:** 2026-08-01
+
+- Added platform-compatible workflow and architecture PNG metadata to
+  `.showcase/showcase.yaml`.
+- `docs/project-page/` stores the editable HTML diagram sources and the
+  committed raster maps. The shared portfolio detail template renders them
+  full width with the global active palette; no standalone visitor page or SVG
+  is introduced.
+- The maps distinguish the currently listed demo from a source refresh: the
+  refresh remains blocked by the recorded quality gates.
+
 ## Remediation before reconsideration
 
 1. Restore the frontend test dependency and update/remove tests whose target

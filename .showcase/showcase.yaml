@@ -8,6 +8,13 @@ description: >
   novelty and feasibility scores, a detailed breakdown, and a product sketch
   you can generate on demand.
 tags: [ai, research, llm, startup-ideas, fastapi, react]
+technicalMaps:
+  workflow:
+    url: https://raw.githubusercontent.com/dgdev25/whitespace/main/docs/project-page/whitespace-workflow-map.png
+    alt: "Technical workflow map: scheduled arXiv ingestion, paper normalization, bounded LLM analysis, scoring, product-sketch generation, and reviewable saved ideas."
+  architecture:
+    url: https://raw.githubusercontent.com/dgdev25/whitespace/main/docs/project-page/whitespace-architecture-map.png
+    alt: "Technical architecture map: React client, FastAPI application boundary, SQLite demo data, shared LLM relay, arXiv, and operational safety controls."
 visibility: public-card
 port: 8000
 healthPath: /api/system/health
