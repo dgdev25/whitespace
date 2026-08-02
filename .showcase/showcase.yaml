@@ -1,12 +1,14 @@
 schemaVersion: 1
 title: Whitespace
-summary: A read-only, invite-gated technical showcase of reviewable AI-product hypotheses built from permanently synthetic evidence.
+summary: An invite-gated, fully live evidence-to-product-review workflow — real ingestion and model analysis, running on a free-tier relay at $0 marginal cost.
 description: >
-  Whitespace demonstrates an evidence-to-product-review workflow using two
-  permanently synthetic source records and three prebuilt ideas. The hosted
-  environment is deliberately read only: live ingestion, model analysis, and
-  generation routes are disabled before any external request can occur.
-tags: [ai, synthetic-data, review-workflow, fastapi, react]
+  Whitespace demonstrates an evidence-to-product-review workflow: submit or
+  review source records, run real model-backed analysis, and inspect the
+  resulting product sketch, PRD, and technical plan. LLM calls run through
+  myportfolio's shared free-model relay — the real OpenRouter key never
+  reaches this container, and every call falls through a chain of free-tier
+  models, so hosting this publicly costs nothing per request.
+tags: [ai, review-workflow, fastapi, react]
 technicalMaps:
   workflow:
     url: https://lyledg.com/product-maps/whitespace-workflow-map.png
@@ -20,6 +22,16 @@ healthPath: /api/system/health
 deploy:
   mode: dockerfile
   dockerfile: Dockerfile
+env:
+  OPENROUTER_BASE_URL:
+    description: >-
+      Points at myportfolio's internal free-model relay instead of OpenRouter
+      directly — the real API key never reaches this container (ADR 0024).
+    required: true
+    generator: shared
+  CORS_ORIGINS:
+    description: This deployment's own public origin, e.g. https://<this-deployment>.
+    required: true
 # Single-container demo: the FastAPI backend serves the frontend's built
 # static assets itself (see backend/app/main.py's STATIC_DIR mount) rather
 # than running as two separate services. Uses the backend's default SQLite
@@ -33,56 +45,55 @@ lifecycle: { sleepable: true, sleepAfterMinutes: 30 }
 
 category: AI research tool
 overview: >
-  The hosted Whitespace showcase presents a deterministic evidence-review
-  workflow. It starts with two labelled synthetic source records and three
-  scored ideas, then lets an invited reviewer inspect a complete static product
-  sketch, PRD, and technical plan. The browser never receives a provider key,
-  and the server rejects live ingestion, model analysis, and plan generation.
+  The hosted Whitespace demo is fully live: an invited reviewer can submit
+  source evidence, run real model-backed analysis, and inspect the generated
+  product sketch, PRD, and technical plan. Model calls run through
+  myportfolio's free-tier relay, so real generation costs nothing per request.
 techStack:
-  - { name: FastAPI, label: "read-only API and showcase boundary" }
+  - { name: FastAPI, label: "API and evidence-review workflow" }
   - { name: React, label: "frontend UI" }
   - { name: TypeScript, label: "frontend types" }
-  - { name: SQLite, label: "synthetic demo data store" }
+  - { name: SQLite, label: "demo data store" }
 hero:
   appName: Whitespace
   nav: [Feed, Saved, History, Projects, Settings]
   activeNav: Feed
-  screenTitle: Synthetic Idea Feed
+  screenTitle: Idea Feed
   stats:
     - { label: "Ideas", value: "3" }
-    - { label: "Synthetic sources", value: "2" }
-    - { label: "Live pipelines", value: "0" }
+    - { label: "Sources", value: "2" }
+    - { label: "Live model calls", value: "on" }
   lists:
     - title: "Recent ideas"
       items:
-        - { label: "Evidence Ledger for AI decisions", sub: "synthetic" }
-        - { label: "Policy Diff for changing controls", sub: "synthetic" }
+        - { label: "Evidence Ledger for AI decisions", sub: "reviewed" }
+        - { label: "Policy Diff for changing controls", sub: "reviewed" }
   chart: donut
 howItWorks:
   kicker: "WHITESPACE · IDEA PIPELINE"
-  heading: A fixed synthetic dataset demonstrates reviewable product hypotheses.
-  subhead: Static evidence in, inspectable plans out — without an external source or model call.
+  heading: Real evidence review and model-backed plan generation.
+  subhead: Evidence in, model-generated plans out — running on a free-tier relay.
   steps:
-    - { label: "01 · SEED", title: "Load synthetic records", lines: ["Two source records and three ideas", "Idempotent startup repair"], tag: "SQLite" }
-    - { label: "02 · REVIEW", title: "Inspect evidence and scores", lines: ["Synthetic source references", "Novelty and feasibility context"], tag: "Read-only" }
-    - { label: "03 · PLAN", title: "Open static product output", lines: ["Prebuilt sketch, PRD, and technical plan"], tag: "Static" }
-    - { label: "04 · ENFORCE", title: "Block live operations", lines: ["Ingestion and model routes return 403"], tag: "Guard" }
-  guarantees: ["Every hosted record is explicitly synthetic", "No live ingestion, model call, or browser credential"]
+    - { label: "01 · SEED", title: "Load starter records", lines: ["Two source records and three ideas", "Idempotent startup repair"], tag: "SQLite" }
+    - { label: "02 · REVIEW", title: "Inspect evidence and scores", lines: ["Source references", "Novelty and feasibility context"], tag: "Review" }
+    - { label: "03 · ANALYZE", title: "Run model-backed analysis", lines: ["Real LLM calls via the free-model relay"], tag: "Live" }
+    - { label: "04 · PLAN", title: "Generate product output", lines: ["Sketch, PRD, and technical plan"], tag: "Generate" }
+  guarantees: ["The real OpenRouter key never enters this container", "Every relay call falls through a chain of free-tier models"]
 architecture:
   kicker: "WHITESPACE · ARCHITECTURE"
-  heading: A FastAPI backend serves a React frontend from one read-only container.
-  subhead: SQLite holds only fixed synthetic records; live research and model boundaries are disabled.
+  heading: A FastAPI backend serves a React frontend from one container.
+  subhead: SQLite holds demo records; model calls route through myportfolio's internal relay.
   columns:
     - label: "01 · CLIENT"
       nodes:
-        - { tag: "UI", title: "React frontend", lines: ["Feed, evidence review, static plans"] }
+        - { tag: "UI", title: "React frontend", lines: ["Feed, evidence review, generated plans"] }
     - label: "02 · API"
       nodes:
-        - { tag: "API", title: "FastAPI backend", lines: ["Read endpoints, static export, health"] }
-        - { tag: "GUARD", title: "Showcase safety boundary", lines: ["Live ingestion and model actions return 403"] }
+        - { tag: "API", title: "FastAPI backend", lines: ["Ingestion, analysis, plan generation, health"] }
+        - { tag: "RELAY", title: "Free-model relay", lines: ["OPENROUTER_BASE_URL points at the orchestrator, never a real key"] }
     - label: "03 · DATA"
       nodes:
-        - { tag: "DB", title: "SQLite", lines: ["Synthetic sources, ideas, static plans"] }
+        - { tag: "DB", title: "SQLite", lines: ["Sources, ideas, generated plans"] }
   legend:
     - { style: solid, label: "application data" }
     - { style: dashed, label: "disabled live-operation boundary" }

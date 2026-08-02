@@ -40,9 +40,10 @@ COPY --from=frontend-builder /build/frontend/dist ./static
 
 ENV PATH="/app/backend/.venv/bin:$PATH"
 ENV STATIC_DIR=/app/backend/static
-# The showcase image is deliberately read-only: browser requests must not
-# start live ingestion or model-backed generation against external services.
-ENV SHOWCASE_DEMO_MODE=true
+# Real generation/ingestion is enabled: the free-tier OpenRouter relay
+# (myportfolio's orchestrator) makes real calls safe to expose publicly at
+# $0 marginal cost — see OPENROUTER_BASE_URL in .showcase/showcase.yaml.
+ENV SHOWCASE_DEMO_MODE=false
 
 RUN useradd -m appuser && chown -R appuser:appuser /app/backend /opt/uv-python
 USER appuser

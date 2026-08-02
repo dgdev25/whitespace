@@ -457,9 +457,12 @@ async def get_config(session: AsyncSession = Depends(get_session)):
 @router.put("/pipeline-config", response_model=SystemConfigOut)
 async def set_pipeline_config(body: PipelineConfigIn, session: AsyncSession = Depends(get_session)):
     user_cfg = await _get_user_settings(session)
-    user_cfg.max_sources_per_run = max(1, body.max_sources_per_run)
-    user_cfg.cached_analyses_count = max(0, body.cached_analyses_count)
-    user_cfg.ideas_per_run = max(1, body.ideas_per_run)
+    # Ceilings match the seeded defaults (line ~358-360) — a public demo has
+    # no per-visitor account, so this is the only brake on one visitor cranking
+    # per-run volume up indefinitely against the free-model relay.
+    user_cfg.max_sources_per_run = max(1, min(40, body.max_sources_per_run))
+    user_cfg.cached_analyses_count = max(0, min(30, body.cached_analyses_count))
+    user_cfg.ideas_per_run = max(1, min(8, body.ideas_per_run))
     await session.commit()
     all_orgs = _parse_setting(settings.arxiv_orgs)
     all_cats = _parse_setting(settings.arxiv_categories)
